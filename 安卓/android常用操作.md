@@ -12,6 +12,12 @@
 
 
 
+### Git使用
+
+[Android Studio配置GitHub同步代码步骤](https://blog.csdn.net/qq_46128318/article/details/111544246)
+
+
+
 ### 控件使用
 
 #### 使用RecyclerView
