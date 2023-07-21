@@ -2,13 +2,15 @@
 
 自动补全代码	`alt+/`
 
-
-
 使用系统asset资源	`new>Vector Asset`
 
-
-
 函数快捷键	`alt+insert`
+
+快速复制	`ctrl+d`
+
+复制多行	按中`alt`
+
+打开类 	`ctrl+N`
 
 
 
