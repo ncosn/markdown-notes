@@ -651,3 +651,211 @@ public ScheduledThreadPoolExecutor(int corePoolSize) {
 
 ### AsyncTask
 
+```java
+public abstract class AsyncTask<Params, Progress, Result> {
+    ···
+}
+```
+
+AsyncTask是一个抽象的泛型类，它有3个泛型参数，分别是Params、Progress和Result，其中Params为参数类型，Progress为后台任务执行进度的类型，Result为返回结果的类型。如果不需要某个参数，可以将其设置为Void类型。AsyncTask有4个核心方法，如下：
+
+（1）onPreExecute()：在主线程中执行。一般在任务执行前做准备工作，比如对UI做一些标记。
+
+（2）doInBackground(Params...params)：在线程池中执行。在onPreExecute方法执行后运行，用来执行较为耗时的操作。在执行过程中可以调用publishProgress(Params...values)来更新进度信息。
+
+（3）onProgressUpdate(Progress...values)：在主线程中执行。当调用publishProgress(Progress...values)时，此方法会将进度更新到UI组件上。
+
+（4）onPostExecute(Result result)：在主线程中执行。当后台任务执行完成后，它会被执行。doInBackground方法得到的结果就是返回的result的值。此方法一般做任务执行后的收尾工作，比如更新UI和数据。
+
+
+
+#### AsyncTask源码分析
+
+**1、Android 3.0版本以前的AsyncTask**
+
+AsyncTask的线程池的核心线程数是5个，线程池允许创建的最大线程数为128，非核心线程空闲等待新任务的最长时间为1s。采用的阻塞队列为LinkedBlockingQueue，容量为10。所以AsyncTask最多能同时容纳138个任务，当提交139个任务时就会执行饱和策略，默认抛出RejectedExecutionException异常。
+
+**2、Android 7.0**
+
+```java
+public AsyncTask(){
+    mWorker =new WorkerRunnable<Params,Result>(){//1
+        public Result call()throws Exception {
+            mTaskInvoked.set(true);
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+            Result result = doInBackground(mParams);
+            Binder.flushPendingCommands();
+            return postResult(result);
+        }
+    };
+    mFuture =new FutureTask<Result>(mWorker){//2
+        @Override
+        protected void done(){
+            try {
+                postResultIfNotInvoked(get());
+            }catch(InterruptedException e){
+                android.util.Log.w(LOG_TAG,e);
+            }catch(ExecutionException e){
+                throw new RuntimeException("An error occurred while executing doInBackground()",e.getCause());
+            }catch(CancellationException e){
+                postResultIfNotInvoked(null);
+            }
+        }
+    }
+};
+```
+
+注释1处WorkerRunnable实现了Callable接口，并实现了call方法，在call方法中调用了doInBackground（mParams）来处理任务并得到结果，并最终用postResult将结果投递出去。注释2处的FutureTask是一个可管理的异步任务，它实现了Runnable和Future这两个接口。因此，它可以包装Runnable和Callable，并提供给Executor执行。也可以调用线程直接执行(FutureTask.run())。在这里WorkerRunnable作为参数传递给FutureTask。这两个变量会暂时保存在内存中，稍后会用到它们。当要执行AsyncTask时，需要调用它的execute方法，代码如下：
+
+```java
+public final AsyncTask<Params,Progress,Result> execute(Params... params) {
+    return executeOnExecutor(sDefaultExecutor, params);
+}
+```
+
+execute方法又调用了executeOnExecutor方法，代码如下：
+
+```java
+public final AsyncTask<Params,Progress,Result> executeOnExecutor(Executor exec, Params... params) {
+    if(mStatus !=Status.PENDING){
+        switch(mStatus){
+            case RUNNING:
+                throw new IllegalStateException("Cannot execute task: the task is already running.");
+            case FINISHED:
+                throw new IllegalStateException("Cannot execute task: the task has already been executed (a task can be executed only once)");
+        }
+    }
+    mStatus =  Status.RUNNING;
+    onPreExecute();
+    mWorker.mParams = params;//1
+    exec.execute(mFuture);
+    return this;
+}
+```
+
+这里首先会调用onPreExecute()方法，在注释1处将AsyncTask的参数传给WorkerRunnable。我们知道WorkerRunnable会作为参数传给FutureTask，因此参数被封装到FutureTask中。接下来调用exec的execute方法，并将mFuture即FutureTask对象传进去。这里exec是传进来的参数sDefaultExecutor，它是一个串行的线程池SerialExecutor，其代码如下：
+
+```java
+private static class SerialExecutor implements Executor {
+    final ArrayDeque<Runnable> mTasks = new ArrayDeque<Runnable>();
+    Runnable mActive;
+    public synchronized void execute(final Runnable r) {
+        mTasks.offer(new Runnable() {//1
+            public void run() {
+                try {
+                    r.run();//2
+                } finally {
+                    scheduleNext();
+                }
+            }
+        });
+        if (mActive == null) {
+            scheduleNext();
+        }
+    }
+    protected synchronized void scheduleNext() {
+        if ((mActive = mTask.poll()) != null) {
+            THREAD_POOL_EXECUTOR.execute(mActive);
+        }
+    }
+}
+```
+
+注释1处，当调用SerialExecutor的execute方法时，会将FutureTask加入到mTasks中。当任务执行完成或者当前没有活动的任务时都会执行scheduleNext方法，它会从mTasks取出FutureTask任务并交由THREAD_POOL_EXECUTOR处理。关于THREAD_POOP_EXECUTOR的内容，后面会介绍。这里可以看出SerialExecutor是串行执行的。注释2处可以看到执行了FutureTask的run方法，它最终会调用WorkerRunnable的call方法。前面我们提到call方法最终会调用postResult方法将结果投递出去，postResult方法代码如下：
+
+```java
+private Result postResult(Result result) {
+    @SuppressWarnings("unchecked")
+    Message message = getHandler().obtainMessage(MESSAGE_POST_RESULT,new AsyncTaskResult<Result>(this, result));
+    message.sendToTarget();
+    return result;
+}
+```
+
+在postResult中会创建Message，将结果赋值给这个Message，通过getHandler方法得到Handler，并通过这个Handler发送消息。getHandler方法如下：
+
+```java
+private static Handler getHandler() {
+    synchronized (AsyncTask.class) {
+        if (sHandler == null) {
+            sHandler = new InternalHandler();
+        }
+        return sHandler;
+    }
+}
+```
+
+在getHandler中创建了InternalHandler，InternalHandler定义如下：
+
+```java
+private static class InternalHandler extends Handler {
+    public InternalHandler() {
+        super(Looper.getMainLooper());
+    }
+    
+    @SuppressWarning({"unchecked","RawUseOfParameterizedType"})
+    @Override
+    public void handleMessage(Message msg) {
+        AsyncTaskResult<?> result = (AsyncTaskResult<?>) msg.obj;
+        switch(msg.what) {
+            case MESSAGE_POST_RESULT:
+                // There is only one result
+                result.mTask.finish(result.mData[0]);
+                break;
+            case MESSAGE_POST_PROGRESS:
+                result.mTask.onProgressUpdate(result.mData);
+                break;
+        }
+    }
+}
+```
+
+在接收到MESSAGE_POST_RESULT消息后会调用AsyncTask的finish方法，代码如下：
+
+```java
+private void finish(Result result) {
+    if (isCancelled()) {
+        onCancelled(result);
+    } else {
+        onPostExecute(result);
+    }
+    mStatus = Status.FINISHED;
+}
+```
+
+如果AsyncTask任务被取消了，则执行onCancelled方法，否则就调用onPostExecute方法。正是通过onPostExecute方法，我们才能够得到异步任务执行后的结果。接着回头来看SerialExecutor，线程池SerialExecutor主要用来处理排队，将任务串行处理。在SerialExecutor中调用scheduleNext方法时，将任务交给THREAD_POOL_EXECUTOR。THREAD_POOL_EXECUTOR同样是一个线程池，用来处理任务，代码如下：
+
+```java
+private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
+private static final int CORE_POOL_SIZE = Math.max(2,Math.min(CPU_COUNT-1,4));
+private static final int MAXIMUM_POOL_SIZE = CPU_COUNT * 2 + 1;
+private static final int KEEP_ALIVE_SECONDS = 30;
+private static final BlockingQueue<Runnable> sPoolWorkQueue = new LinkedBlockingQueue<Runnable>(128);
+public static final Executor THREAD_POOL_EXECUTOR;
+static {
+    ThreadPoolExecutor threadPoolExecutor = new threadPoolExecutor(CORE_POOL_SIZE,MAXIMUM_POOL_SIZE,KEEP_ALIVE_SECONDS,TimeUnit.SECONDS,sPoolWorkQueue,sThreadFactory);
+    threadPoolExecutor.allowCoreThreadTimeOut(true);
+    THREAD_POOL_EXECUTOR = threadPoolExecutor;
+}
+```
+
+THREAD_POOL_EXECUTOR指的是threadPoolExecutor，其核心线程和线程池允许创建的最大线程数都是由CPU的核数计算出来的。它采用的阻塞队列仍旧是LinkedBlockingQueue，容量128。
+
+> 到此，Android 7.0版本的AsyncTask源码就分析完了。在AsyncTask中用到了线程池，在线程池中运行线程，并且又用到了阻塞队列。因此，本章前面介绍的知识在本节中做了很好的铺垫。Android 3.0及以上版本用SerialExecutor作为默认的线程，它将任务串行地处理，保证一个时间段只有一个任务执行；而Android 3.0之前的版本是并行处理的。Android 3.0之前版本的缺点在Android 3.0之后的版本中也不会出现，因为线程是一个接一个执行的，不会出现超过任务数而执行饱和策略的情况。如果想要在Android 3.0及以上版本使用并行的线程处理，可以使用如下的代码：
+>
+> asyncTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,＂＂);
+>
+> 其中asyncTask是我们自定义的AsyncTask，当然也可以传入4.4.3节中讲到的4种线程池，比如传入CachedThreadPool。
+>
+> asyncTask.executeOnExecutor(Executors.newCachedThreadPool(),＂＂);
+>
+> 还可以传入自定义的线程池，如下所示：
+>
+> ```java
+> Executor exec = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+> 		0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<Runnable>());
+> asyncTask.executeOnExecutor(exec,"");
+> ```
+>
+> 
+
