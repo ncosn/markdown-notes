@@ -1,4 +1,4 @@
-### Java序列化
+## Java序列化
 
 序列化：把Java对象转换为字节序列的过程
 
@@ -232,3 +232,131 @@ serialVersionUID的作用：Java的反序列化机制是通过判断serialVersio
    ```
 
    我们没有显式声明`serialVersionUID`变量，因此Java虚拟机会自动为它生成一个版本号。如果需要查看自动生成的版本号，可以使用`serialver`命令行工具（例如：`serialver MyClass`）来获取。
+
+
+
+
+
+## Android序列化
+
+Android数据对象序列化的主要用途是将对象转换为字节流的形式，以便在网络传输、持久化存储或进程间通信中使用。具体的用途包括：
+
+1. 网络传输：在Android开发中，我们经常需要将对象通过网络传输给其他设备或服务器。通过序列化，我们可以将对象转换为字节流，然后通过网络发送给目标设备或服务器，目标设备或服务器再将字节流反序列化为对象进行处理。
+2. 持久化存储：Android应用程序通常需要将数据保存在本地存储中，以便在应用程序关闭后仍然可以访问。通过序列化，我们可以将对象转换为字节流，并将其保存在本地文件或数据库中。当应用程序再次启动时，我们可以将字节流反序列化为对象，以便恢复之前保存的数据。
+3. 进程间通信：在Android中，不同的组件（如Activity、Service、BroadcastReceiver等）可能运行在不同的进程中。通过序列化，我们可以将对象转换为字节流，并通过进程间通信机制（如Binder）将字节流传递给其他进程，其他进程再将字节流反序列化为对象进行处理。
+
+
+
+### 常用序列化方式
+
+#### Serializable接口
+
+同Java
+
+
+
+#### Parcelable接口
+
+Parcelable接口是Android特有的接口，相比Serializable接口，它更高效。在需要序列化的类中实现Parcelable接口，并实现相关方法。然后使用Parcel对象将对象写入Parcel，使用Parcel对象从Parcel中读取对象。
+
+```java
+public class MyClass implements Parcelable {
+    // 类的成员变量和方法
+
+    protected MyClass(Parcel in) {
+        // 从Parcel中读取数据并赋值给成员变量
+    }
+
+    public static final Creator<MyClass> CREATOR = new Creator<MyClass>() {
+        @Override
+        public MyClass createFromParcel(Parcel in) {
+            return new MyClass(in);
+        }
+
+        @Override
+        public MyClass[] newArray(int size) {
+            return new MyClass[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        // 将成员变量写入Parcel
+    }
+}
+```
+
+#### Gson库
+
+Gson是Google提供的一个用于在Java对象和JSON数据之间进行序列化和反序列化的库。可以使用Gson将对象转换为JSON字符串，然后再将JSON字符串转换为对象。
+
+```java
+public class MyClass {
+    // 类的成员变量和方法
+
+    public static void main(String[] args) {
+        // 序列化对象
+        MyClass obj = new MyClass();
+        Gson gson = new Gson();
+        String json = gson.toJson(obj);
+        System.out.println("对象已序列化为JSON字符串：" + json);
+
+        // 反序列化对象
+        MyClass newObj = gson.fromJson(json, MyClass.class);
+        System.out.println("JSON字符串已反序列化为对象");
+    }
+}
+```
+
+
+
+### Parcelable底层
+
+**Parcelable**是Android中用于实现对象序列化的接口。它的原理是将对象的数据按照一定的格式进行打包和解包，以便在不同的组件之间传输或存储。
+
+具体实现步骤如下：
+
+1. 实现Parcelable接口：在需要序列化的类中实现Parcelable接口，并实现其中的方法，包括`describeContents()`和`writeToParcel(Parcel dest, int flags)`。
+2. `describeContents()`方法：该方法返回一个标志位，用于描述Parcelable对象特殊对象的类型。一般情况下，返回0即可。
+3. `writeToParcel(Parcel dest, int flags)`方法：该方法将对象的数据写入Parcel对象中。在该方法中，需要将对象的各个字段按照一定的顺序写入Parcel对象中，以便在解包时按照相同的顺序读取。
+4. 实现Parcelable.Creator接口：在需要序列化的类中实现Parcelable.Creator接口，并实现其中的方法，包括`createFromParcel(Parcel source)`和`newArray(int size)`。
+5. `createFromParcel(Parcel source)`方法：该方法从Parcel对象中读取数据，并创建出Parcelable对象。在该方法中，需要按照写入Parcel对象时的顺序读取数据，并将其赋值给相应的字段。
+6. `newArray(int size)`方法：该方法返回一个指定大小的Parcelable数组。
+
+通过实现Parcelable接口，可以将对象的数据打包成一个Parcel对象，然后可以通过Intent传递给其他组件，或者通过Bundle存储到本地。在接收端，可以通过读取Parcel对象的数据，重新构建出原始的对象。
+
+总结起来，Parcelable的原理就是将对象的数据按照一定的格式进行打包和解包，以实现对象的序列化和反序列化。这种方式相对于Java中的Serializable接口，更加高效和灵活。
+
+
+
+### Serializable与Parcelable对比
+
+Serializable和Parcelable都是用于实现对象的序列化和反序列化的接口，但在实现方式和性能方面有所不同。
+
+1. Serializable：
+
+- Serializable是Java提供的默认序列化机制，通过实现Serializable接口，可以将对象转换为字节流，以便在网络传输或保存到文件中。
+- Serializable使用反射机制，将对象的状态保存到字节流中，然后再从字节流中恢复对象的状态。这种方式相对简单，但效率较低。
+- Serializable的缺点是序列化和反序列化的过程需要大量的I/O操作，对性能要求较高的场景下可能会影响程序的执行效率。
+
+2. Parcelable：
+
+- Parcelable是Android提供的专门用于Android平台的序列化机制，通过实现Parcelable接口，可以将对象转换为字节流，以便在Activity之间传递。
+- Parcelable使用了更加高效的序列化方式，将对象的状态拆分为多个字段，分别写入和读取字节流。这种方式相对复杂，但效率较高。
+- Parcelable的优点是序列化和反序列化的过程更加高效，对性能要求较高的场景下可以提升程序的执行效率。
+
+Serializable适用于简单的序列化场景，而Parcelable适用于对性能要求较高的Android平台。在选择使用Serializable还是Parcelable时，需要根据具体的需求和性能要求进行权衡。
+
+| 对比     | Serializable                                                 | Parcelable                                                   |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 所属API  | Java API                                                     | Android SDK API                                              |
+| 特点     | 序列化和反序列化会经过大量的I/O操作，产生大量的临时变量引起GC，且反序列化时需要反射 | 基于内存拷贝实现的封装和解封(marshalled& unmarshalled)，序列化基于Native层实现 |
+| 开销     | 相对高                                                       | 相对低                                                       |
+| 效率     | 相对低                                                       | 相对高                                                       |
+| 适用场景 | 简单序列化                                                   | Android                                                      |
+
