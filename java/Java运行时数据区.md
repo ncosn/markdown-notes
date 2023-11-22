@@ -251,7 +251,68 @@ Java为了实现“一次编写随处运行”，将java代码编译成与本地
 
 不同版本，垃圾回收器不同，运行时堆也不同。而ART同时包含多种方案，OEM厂商可以更改GC类型。
 
+#### Android 8 之前
 
+默认采用并发标记清除（CMS）方案
+
+支持内存压缩，但是有条件，进行的次数不多，可能会产生内存碎片
+
++ 应用进入后台之前，它会避免执行压缩
++ 应用进入后台之后，它会暂停应用线程以执行压缩（Stop-The-World）
++ 如果对象分配因内存碎片而失败，则必须执行压缩操作，应用可能会短时间无响应
+
+#### Android 8 开始
+
+默认采用并发复制（CC）方案
+
++ 支持使用名为"RegionTLAB"的触碰指针分配器。此分配器可以向每个应用线程分配一个线程本地分配缓冲区，这样应用线程只需触碰“栈顶”指针，而无需任何同步操作，即可从其TLAB中将对象分配出去。
++ 依靠读取屏障拦截来自堆的引用读取，并发复制对象来执行对碎片整理，从而不用暂停用户线程
++ GC只有一次很短的暂停，对于堆大小而言，盖茨暂停在时间上是一个常量
+
+#### Android 10 开始
+
+默认采用并发复制（CC）方案，但是增加了分待处理
+
++ 支持快速回收存留期较短的对象，提高GC吞吐量，并降低全堆GC的执行。
+
+### GC日志
+
+ART 会在**主动请求 GC** 时或**认为 GC 速度慢**（暂停超过5ms或者持续超过100ms，且暂停可以被察觉）时才会打印 GC 日志，具体格式为：
+
+```
+<GC_Reason> <GC_Name> <Objects_freed>(<Size>) AllocSpace Objects, <Large_objects_freed>(<size>) <Heap_stats> LOS objects , <Pause_time> <Total_time>
+```
+
+#### GC 原因
+
+`GC_Reason` 指的是引起 GC 的原因，有以下几种。
+
+- `Concurrent`：并发 GC，不会使 App 的线程暂停，该 GC 在后台线程运行，不会阻止内存分配。
+- `Alloc`：当堆内存已满时，App 尝试分配内存引起的 GC，这个 GC 会发生在正在分配内存的线程中。
+- `Explicit`：App显式的请求垃圾回收，例如调用 `System.gc()`。
+- `NativeAlloc`：Native 内存分配时，触发的 GC。
+- `CollectorTransition`：由堆转换引起的回收，运行时切换 GC 引起的。将所有对象从空闲列表空间复制到碰撞指针空间，反之亦然。仅出现在内存较小的设备上App将进程从可察觉的暂停状态更改为可察觉的非暂停状态。
+- `HomogeneousSpaceCompact`：齐性空间压缩是指空闲列表到压缩的空闲列表空间，通常发生在App移动到可察觉的暂停进程状态。以此来减小内存使用并对堆内存进行碎片整理。
+- `DisableMovingGc`：不是真正触发 GC 的原因。发生并发堆压缩时，由于使用了GetPrimitiveArrayCritical，收集会被阻塞。
+- `HeapTrim`：不是触发 GC 的原因。收集会一直被阻塞，直到堆内存整理完毕。
+
+#### 垃圾收集器名称
+
+`GC_Name` 指的是垃圾收集器名称，有以下几种。
+
+- `Concurrent Mark Sweep`：CMS 收集器，采用标记清除算法实现，收集暂停时间短。完整的堆垃圾收集器，能释放除了 Image Space 外的所有空间。
+- `Concurrent Partial Mark Sweep`：局部收集器，能释放除了 Image Space 和 Zygote Space 外的所有空间。
+- `Concurrent Sticky Mark Sweep`：粘性收集器，基于分代的垃圾收集思想，只能释放自上次 GC 以来分配的对象。比完整或局部垃圾收集器扫描更频繁、更快且暂停时间更短。
+- `Marksweep + Semispace`：非并发的 GC，复制 GC 用于堆转换以及碎片整理。
+
+#### 其他字段
+
+- `Objects_freed`：从非 Large Object Space 中回收的对象的数量。
+- `Size_freed`：从非 Large Object Space 中回收的字节数。
+- `Large_objects_freed`：从 Large O同ect Space 中回收的对象的数量。
+- `Large_object_size_freed`：从 Large Object Space 中回收的字节数。
+- `Heap_stats`：堆的空闲内存百分比，即（已用内存 / 堆的总内存）。
+- `Pause_times`：暂停时间，暂停时间与在 GC 运行时修改的对象引用的数量成比例。目前， ART 的 CMS 收集器仅有一次暂停，它出现在 GC 的结尾附近。移动的垃圾收集器暂停时间会很长，会在大部分垃圾回收期间持续出现 。
 
 
 
