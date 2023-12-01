@@ -172,7 +172,7 @@ init的main函数做了很多事情，比较复杂，我们只需关注主要的
 
 #### 解析init.rc
 
-init.rc是一个重要的配置文件，由Android初始化语言编写的脚本，这种语言主要包含5种类型语句：Action、Command、Service、Option和Import
+init.rc是一个重要的配置文件，由Android初始化语言（Android Init Language）编写的脚本，这种语言主要包含5种类型语句：Action、Command、Service、Option和Import
 
 system/core/rootdir/init.rc
 
@@ -411,7 +411,7 @@ Windows平台上有一个注册表管理器，注册表的内容采用键值对�
 
 init 程启动做了很多的工作，总的来说主要做了以下三件事：
 
-1. 创建和挂载启动所 的文件目 录。
+1. 创建和挂载启动所需的文件目录。
 2. 初始化和启动属性服务。
 3. 解析 init.rc 配置文件并启动 Zygote 进程。
 
@@ -441,6 +441,13 @@ Android系统中，DVM和ART、应用程序进程以及运行系统的关键服�
 
 
 #### Zygote进程启动过程介绍
+
+前面的流程：
+
+1. `init.rc` （class_start main）——> 启动Zygote服务
+2. `builtins.cpp` （ForEachServiceInClass()）——> 遍历Service链表来找并执行StartIfNotDisabled函数
+3. `service.cpp` （StartIfNotDisabled() ——> Start() ——> execve()）——> 进入该Service的main函数
+4. `app_main.cpp` （runtime.start()）——> 至此Zygote启动
 
 <img src="./Android进阶解密.assets/image-20231128151655937.png" alt="image-20231128151655937" style="zoom:50%;" />
 
@@ -538,7 +545,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
 }
 ```
 
-注释1调用startVm函数看创建Java虚拟机，在注释2处调用startReg函数为Java虚拟机注册JNI方法。注释3处的className的值是传进来的参数，他的值为com.android.internal.os.ZygoteInit。在注释4处通过toSlashCalssName，将className的“.”替换为“/”，替换后的值为com/android/internal/os/ZygoteInit并赋值给slashClassName，接着在注释5处根据slashClassName找到Zygotelnit,找到了Zygotelnit后顺理成章地在注释6处找到Zygotelnit的main方法。最终会在注释7处通过JNI调用Zygotelnit的main方法。这里为何要使用JNI呢?因为Zygotelnit的main方法是由Java语言编写的，当前的运行逻辑在Native中，这就需要通过JNI来调用Java。这样Zygote就从Native层进入了Java框架层。
+注释1调用startVm函数来创建Java虚拟机，在注释2处调用startReg函数为Java虚拟机注册JNI方法。注释3处的className的值是传进来的参数，他的值为com.android.internal.os.ZygoteInit。在注释4处通过toSlashCalssName，将className的“.”替换为“/”，替换后的值为com/android/internal/os/ZygoteInit并赋值给slashClassName，接着在注释5处根据slashClassName找到Zygotelnit,找到了Zygotelnit后顺理成章地在注释6处找到Zygotelnit的main方法。最终会在注释7处通过JNI调用Zygotelnit的main方法。这里为何要使用JNI呢?因为Zygotelnit的main方法是由Java语言编写的，当前的运行逻辑在Native中，这就需要通过JNI来调用Java。这样Zygote就从Native层进入了Java框架层。
 
 在我们通过JNI调用ZygoteInit的main方法后，Zygote便进入了Java框架层，此前是没有任何代码进入Java框架层的，换句话说是Zygote开创了Java框架层。该main方法代码如下：
 
@@ -581,4 +588,152 @@ public static void main(String argv[]) {
     }
 }
 ```
+
+在注释1处通过 registerServerSocket 方法来创建 Server 端的 Socket ，这个 name 为“zygote”的 Socket 用于等待 ActivityManagerService 请求 Zygote 来创建新的应用程序进程，关于 AMS 将在第6章进行介绍。在注释2处预加载类和资源。在注释3处启动SystemServer 进程，这样系统的服务也会由 SystemServer 进程启动起来。在注释4处调用ZygoteServer runSelectLoop 方法来等待 AMS 请求创建新的应用程序进程。由此得知，Zygotelnit 的 main 方法主要做了4件事：
+
+**（1）创建一个Server端的Socket**
+
+**（2）预加载类和资源**
+
+**（3）启动 SystemServer 进程**
+
+**（4）等待 AMS 请求创建新的应用程序**
+
+对一三四件事进行介绍：
+
+**1、registerZygoteSocket**
+
+首先ZygoteServer的registerZygoteSocket方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteServer.java
+
+```java
+void registerServerSocket(String socketName) {
+    if(mServerSocket == null) {
+        int fileDesc;
+        // 拼接Socket的名称
+        final String fullSocketName = ANDROID_SOCKET_PREFIX + socketName;//1
+        try {
+            //得到Socket的环境变量的值
+            String env = System.getenv(fullSocketName);//2
+            //将Socket环境变量的值转换为文件描述符的参数
+            fileDesc = Integer.parseInt(env);//3
+        } catch (RuntimeException ex) {
+            throw new RuntimeException(fullSocketName + "unset or invalid", ex);
+        }
+        try {
+            //创建文件描述符
+            FileDescription fd = new FileDescription();//4
+            fd.setInt$(fileDesc);//5
+            //创建服务器端Socket
+            mServerSocket = new LocalServerSocket(fd);//6
+        } catch (IOException ex) {
+            throw new RuntimeException (
+                "Error binding to local socket '" + fileDesc + "'",ex)
+        }
+    }
+}
+```
+
+在注释1处拼接Socket的名称,其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处将ullSocketName 转换为环境变量的值，再在注释 3处转换为文件描述符的参数。在注释 4 处创建文件描述符，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处创建 LocalServerSocket，也就是服务器端的 Socket,并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
+
+**2、启动SystemServer进程**
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+private static boolean startSystemServer(String abiList, String socketName, ZygoteServer zygoteServer) throws Zygote.MethodAndArgsCaller, RuntimeException {
+    ···
+    //创建args数组，这个数组用来保存启动SystemServer的启动参数
+    /*1*/
+    String args[] = {
+        "--setuid=1000",
+        "--setgid=1000",
+        "--setgroups=1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1021,1023,1032,3001,3002,3003,3006,3007,3009,3010",
+        "--capabilities=" + capabilities + "," + capabilities, 
+        "--nice-name=system_server",
+        "--runtime-args",
+        "--runtime-args",
+        "com.android.server.SystemServer",
+    };
+    ZygoteConnection.Arguments parseArgs = null;
+    int pid;
+    try {
+        parseArgs = new ZygoteConnection.Arguments(args);//2
+        ZygoteConnection.applyDebuggerSystemProperty(parsedArgs);
+        ZygoteConnection.applyInvokeWithSystemProperty(parseArgs);
+        /**
+        * 3创建一个子进程，也就是SystemServer进程
+        */
+        pid = Zygote.forkSystemServer(
+        		parsedArgs.uid, parsedArgs.gid,
+        		parsedArgs.gids,
+        		parsedArgs.debugFlags,
+        		null,
+        		parsedArgs.permittedCapabilities,
+        		parsedArgs.effectiveCapabilities);
+    } catch (IllegalArgumentException ex) {
+        throw new RuntimException(ex);
+    }
+    //当前代码逻辑运行在子进程中
+    if (pid == 0) {
+        if (hasSecondZygote(abiList)) {
+            waitForSecondaryZygote(socketName);
+        }
+        zygoteServer.closeServerSocket();
+        //处理SystemServer进程
+        handleSystemServerProcess(parseArgs);//4
+    }
+    return true;
+}
+```
+
+注释1处的代码用来创建args数组，这个数组用来保存启动SystemServer的启动参数，其中可以看出SystemServer进程的用户id和用户组被设置为1000，并且拥有用户组1001~1010、1018、1021、1032、3001~3010的权限；进程名为 system server；启动的类名为comandroid.serverSystemServer。在注释2处将args 数组封装成Arguments 对象并供注释3处的 forkSystemServer 函数调用。在注释3处调用 Zygote 的 forkSystemServer 方法，其内部会调用 nativeForkSystemServer 这个 Native 方法，nativeForkSystemServer 方法最终会通过 fork 函数在当前进程创建一个子进程，也就是 SystemServer 进程，如果forkSystemServer 方法返回的 pid 的值为0，就表示当前的代码运行在新创建的子进程中，则执行注释4处的 handleSystemServerProcess 来处理 SystemServer 进程，关于 SystemServer 进程启动会在下文介绍。
+
+**3、runSelectLoop**
+
+启动SystemServer进程后，会执行ZygoteServer的runSelectLoop方法：
+
+frameworks/base/core/java/com/andorid/internal/os/ZygoteServer.java
+
+```java
+void runSelectLoop(String abiList) throws Zygote.MethodAndArgsCaller {
+    ArrayList<FileDesciptor> fds = new ArrayList<FileDesciptor>();
+    ArrayList<ZygoteConnection> peers = new ArrayList<ZygoteConnection>();
+    fds.add(mServerSocket.getFileDesciptor());//1
+    peers.add(null);
+    //无线循环等待AMS请求
+    while (true) {
+        StructPollfd[] pollFds = new StructPollfd[fds.size()];
+        for (int i=0; i < pollFds.length; ++i) {//2
+            pollFds[i] = new StructPollfd();
+            pollFds[i].fd = fds.get[i];
+            pollFds[i].events = (short) POLLIN;
+        }
+        try {
+            Os.poll(pollFds,-1);
+        } catch (ErrnoException ex) {
+            throw new RuntimeException("poll failed", ex);
+        }
+        for (int i = pollFds.length-1; i>=0;--i) {//3
+        	if ((pollFds[i].revents & POOLIN) == 0) {
+                continue;
+            }
+            if (i==0) {
+                ZygoteConnection newPeer = acceptCommandPeer(abiList);//4
+                peers.add(newPeer);
+                fds.add(newPeer.getFileDesciptor());
+            } else {
+                boolean done = peers.get(i).runOnce(this);//5
+                if (done) {
+                    peers.remove(i);
+                    fds.remove(i);
+                }
+            }
+        }
+    }
+}
+```
+
+注释1处的 mServerSocket 就是我们在 registerZygoteSocket 函数中创建的服务器端Socket,调用 mServerSocket.getFileDescriptor()函数用来获得该 Socket 的 fd 字段的值并添加到 fd 列表 fds 中接下来无限循环用来等待 AMS  请求 Zygote 进程创建新的应用程序进程在注释2处通过遍历将 fds 存储的信息转移到 pollFds 数组中。在注释 3处对 pollFds 进行遍历，如果 i==0，说明服务器端 Socket 与客户端连接上了，换句话说就是，当前 Zygote进程与AMS 建立了连接。在注释4处通过 acceptCommandPeer 方法得到 ZygoteConnection 类并添加到 Socket 连接列表 peers 中，接着将该 ZygoteConnection 的 fd 添加到 fd 列表 fds中，以便可以接收到AMS 发送过来的请求。如果i的值不等于 0，则说明AMS 向 Zygote进程发送了一个创建应用进程的请求，则在注释 5处调用 ZygoteConnection 的 runOnce函数来创建一个新的应用程序进程，并在成功创建后将这个连接从 Socket 连接列表 peers 和 fd 列表 fds 中清除。
 
