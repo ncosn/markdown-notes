@@ -445,7 +445,7 @@ Android系统中，DVM和ART、应用程序进程以及运行系统的关键服�
 前面的流程：
 
 1. `init.rc` （class_start main）——> 启动Zygote服务
-2. `builtins.cpp` （ForEachServiceInClass()）——> 遍历Service链表来找并执行StartIfNotDisabled函数
+2. `builtins.cpp` （do_class_start() ——> ForEachServiceInClass()）——> 遍历Service链表来找并执行StartIfNotDisabled函数
 3. `service.cpp` （StartIfNotDisabled() ——> Start() ——> execve()）——> 进入该Service的main函数
 4. `app_main.cpp` （runtime.start()）——> 至此Zygote启动
 
@@ -735,5 +735,311 @@ void runSelectLoop(String abiList) throws Zygote.MethodAndArgsCaller {
 }
 ```
 
-注释1处的 mServerSocket 就是我们在 registerZygoteSocket 函数中创建的服务器端Socket,调用 mServerSocket.getFileDescriptor()函数用来获得该 Socket 的 fd 字段的值并添加到 fd 列表 fds 中接下来无限循环用来等待 AMS  请求 Zygote 进程创建新的应用程序进程在注释2处通过遍历将 fds 存储的信息转移到 pollFds 数组中。在注释 3处对 pollFds 进行遍历，如果 i==0，说明服务器端 Socket 与客户端连接上了，换句话说就是，当前 Zygote进程与AMS 建立了连接。在注释4处通过 acceptCommandPeer 方法得到 ZygoteConnection 类并添加到 Socket 连接列表 peers 中，接着将该 ZygoteConnection 的 fd 添加到 fd 列表 fds中，以便可以接收到AMS 发送过来的请求。如果i的值不等于 0，则说明AMS 向 Zygote进程发送了一个创建应用进程的请求，则在注释 5处调用 ZygoteConnection 的 runOnce函数来创建一个新的应用程序进程，并在成功创建后将这个连接从 Socket 连接列表 peers 和 fd 列表 fds 中清除。
+注释1处的 mServerSocket 就是我们在 registerZygoteSocket 函数中创建的服务器端Socket，调用 mServerSocket.getFileDescriptor()函数用来获得该 Socket 的 fd 字段的值并添加到 fd 列表 fds 中。接下来无限循环用来等待 AMS  请求 Zygote 进程创建新的应用程序进程。在注释2处通过遍历将 fds 存储的信息转移到 pollFds 数组中。在注释 3 处对 pollFds 进行遍历，如果 i==0，说明服务器端 Socket 与客户端连接上了，换句话说就是，当前 Zygote进程与AMS 建立了连接。在注释4处通过 acceptCommandPeer 方法得到 ZygoteConnection 类并添加到 Socket 连接列表 peers 中，接着将该 ZygoteConnection 的 fd 添加到 fd 列表 fds中，以便可以接收到AMS 发送过来的请求。如果i的值不等于 0，则说明AMS 向 Zygote进程发送了一个创建应用进程的请求，则在注释 5 处调用 ZygoteConnection 的 runOnce函数来创建一个新的应用程序进程，并在成功创建后将这个连接从 Socket 连接列表 peers 和 fd 列表 fds 中清除。
+
+#### Zygote进程启动总结
+
+1. 创建AppRuntime并调用其start方法，启动Zygote进程
+2. 创建Java虚拟机并为Java虚拟机注册JNI方法
+3. 通过JNI调用ZygoteInit的main函数进入Zygote的Java框架层
+4. 通过registerZygoteSocket方法创建服务器端Socket，并通过runSelectLoop方法等待AMS的请求来创建新的应用程序进程
+5. 启动SystemServer进程
+
+### SystemServer处理过程
+
+SystemServer进程主要用于创建系统服务，AMS、WMS和PMS都由它来创建。
+
+#### Zygote处理SystemServer进程
+
+<img src="./Android进阶解密.assets/image-20231204092629923.png" alt="image-20231204092629923" style="zoom: 50%;" />
+
+在ZygoteInit.java的startSystemServer方法中启动了SystemServer进程：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+privare static boolean startSystemServer(String abiList, String socketName) throws MethodAndArgsCaller, RuntimeException {
+    ···
+    // 当前运行在SystemServer进程中
+    if (pid == 0) {
+        if (hasSecondZygote(abiList)) {
+            waitForSecondaryZygote(socketName);
+        }
+        // 关闭Zygote进程创建的Socket
+        zygoteServer.closeServerSocket();//1
+        handleSystemServerProcess(parsedArgs);//2
+    }
+    return true;
+}
+```
+
+SytemServer进程复制了Zygote进程的地址空间，因此也会得到Zygote进程创建的Socket，这个Socket对于SystemServer进程没有用处，因此需要注释1处的代码来关闭该Socket，接着在注释2处调用handleSystemServerProcess方法来启动SystemServer进程。handleSystemServerProcess方法如下：
+
+frameworks/baes/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+private static void handleSystemServerProcess (ZygoteConnection.Arguments parseArgs) {
+    ···
+    if (parseArgs.invokeWith != null) {
+        ···
+    } else {
+        ClassLoader cl = null;
+        if (systemServerClasspath != null) {
+            cl = createPathClassLoader(systemServerClasspath, parsedArgs.targetSdkVersion);//1
+            Thread.currentThread().setContextClassLoader(cl);
+        }
+        ZygoteInit.zygoteInit(parsedArgs.targetSdkVersion, parseArgs.remainingArgs, cl);//2
+    }
+}
+```
+
+注释1处创建了PathClassLoader，关于PathClassLoader在十二章介绍，在注释2处调用了ZygoteInit的ZygoteInit方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static final void zygoteInit(int targetSdkVersion, String[] argv, ClassLoader classLoader) throws Zygote.MethodAndArgsCaller {
+    if (RuntimeInit.DEBUG) {
+        Slog.d(RuntimeInit.TAG, "RuntimeInit: Starting application from zygote");
+    }
+    Trace.tracingBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,"ZygoteInit");
+    RuntimeInit.redirectLogStreams();
+    RuntimeInit.commonInit();
+    // 启动Binder线程池
+    ZygoteInit.nativeZygoteInit();//1
+    // 进入SystemServer的main方法
+    RuntimInit.appilicationInit(targetSdkVersion, argv,classLoader);//2
+}
+```
+
+在注释1处调用nativeZygoteInit方法，一看方法的名称调用的是Native层的代码，用来启动Binder线程池，这样SystemServer进程就可以使用Binder与其他进程进行通信了。注释2处是用于SystemServer的main方法，现在分别对注释1和注释2的内容进行介绍。
+
+##### 1、启动Binder线程池
+
+nativeZygoteInit是一个Native方法，因此我们了解了它对应的JNI文件。
+
+frameworks/base/core/jni/AndroidRuntime.cpp
+
+```java
+int register_com_android_internal_os_ZygoteInit(JNIEnv* env) {
+    const JNINaticeMethod methods[] = {
+        {"nativeZygoteInit", "()V",
+         (void*) com_android_internal_os_ZygoteInit_nativeZygoteInit},
+    }
+}
+```
+
+通过JNI的gMethods数组，可以看出nativeZygoteInit方法对应的是JNI文件AndroidRuntime.cpp的com_android_internal_os_ZygoteInit_nativeZygoteInit函数：
+
+frameworks/base/core/jni/AndroidRuntime.cpp
+
+```java
+static void com_android_internal_os_ZygoteInit_nativeZygoteInit(JNIEnv* env, jobject clazz) {
+    gCurRuntime->onZygoteInit();
+}
+```
+
+这里gCurRuntime是AndroidRuntime类型的指针，具体指向的是AndroidRuntime的子类AppRuntime，它在app_main.cpp中定义，我们接着来查看AppRuntime的onZygoteInit方法：
+
+frameworks/base/cmds/app_process/app_main.cpp
+
+```java
+virtual void onZygoteInit() {
+    sp<ProcessState> proc = ProcessState::self();
+    ALOGV("App process: starting thread pool.\n");
+    proc->startThreadPool();//1
+}
+```
+
+注释1处的代码用来启动一个Binder线程池，这样SystemServer进程就可以使用Binder与其他进程进行通信，看到这里我们知道RuntimeInit.java的nativeZygoteInit函数主要是用来启动Binder线程池。
+
+##### 2、进入SystemServer的main方法
+
+再回到RuntimeInit.java代码，在注释2处调用了RuntimeInit的applicationInit方法：
+
+frameworks/base/core/java/com/android/internal/os/RuntimeInit.java
+
+```java
+protected static void applicationInit(int targetSdkVersion, String[] argv, ClassLoader classLoader) throws Zygote.MethodAndArgsCaller {
+    ···
+    invokeStaticMain(args.startClass, args.startArgs, classLoader);
+}
+```
+
+在applicationInit方法中主要调用了invokeStaticMain方法：
+
+frameworks/base/core/java/com/andorid/internal/os/RuntimeInit.java
+
+```java
+private static void invokeStaticMain(String className, String[] argv, ClassLoader classLoader) throws Zygote.MethodAndArgsCaller {
+    Class<?> cl;
+    try {
+        //通过反射得到SystemServer类
+        cl = Class.forName(className, true, classLoader);//1
+    } catch (ClassNotFoundException ex) {
+        throw new RuntimeException("Missing class when invoking static main "+ className);
+    }
+    Method m;
+    try {
+        //找到SystemServer的main方法
+        m = cl.getMethod("main", new Class[] {String[].class});//2
+    } catch (NoSuchMethodException ex) {
+        throw new RuntimeException("Missing static main on " + className, ex);
+    } catch (SecurityException ex) {
+        throw new RuntimeException("Problem getting static main on " + className, ex);
+    }
+    int modifiers = m.getModifiers();
+    if (!(Modifier.isStatic(modifiers) && Modifier.isPublic(modifiers))) {
+        throw new RuntimeException("Main method is not public and static on " + className);
+    }
+    throw new Zygote.MethodAndArgsCaller(m, argv);//3
+}
+```
+
+注释1处的className为com.android.server.SystemServer，通过反射返回的cl为SystemServer类。在注释2处找到SystemServer中的main方法。在注释3处将找到的main方法传入MethodAndArgsCaller异常中并抛出该异常，捕获MethodAndArgsCaller异常的代码在Zygotelnitjava的main方法中，这个main方法会调用SystemServer的main方法。那么为什么不直接在invokeStaticMain方法中调用SystemServer的main方法呢?原因是这种抛出异常的处理会清除所有的设置过程需要的堆栈帧，并让SystemServer的main方法看起来像是SystemServer进程的入口方法。在Zygote启动了SystemServer进程后，SystemServer进程已经做了很多的准备工作，而这些工作都是在SystemServer的main方法调用之前做的，这使得SystemServer的main方法看起来不像是SystemServer进程的入口方法，而这种抛出异常交由Zygotelnit.java的main方法来处理，会让SystemServer的main方法看起来像是SystemServer进程的入口方法。
+
+下面来查看在ZygoteInit.java的main方法中是如何捕获MethodAndArgsCaller异常的：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static void main(String argv[]) {
+    ···
+    	closeServerSocket();
+	} catch (MethodAndArgsCaller caller) {
+    	caller.run();
+	} catch (RuntimeException ex) {
+    Log.e(TAG, "Zygote died with exception", ex);
+    closeServerSocket();
+    throw ex;
+	}    
+}
+```
+
+当捕获到MethodAndArgsCaller异常时就会在注释1处调用MethodAndArgsCaller的run方法，MethodAndArgsCaller是Zygote.java的静态内部类：
+
+frameworks/base/core/java/com/android/internal/os/Zygote.java
+
+```java
+public static class MethodAndArgsCaller extends Exception implements Runnable {
+    private final Method mMtheod;
+    private final String[] mArgs;
+    public MethodAndArgsCaller(Method method, String[] args) {
+        mMethod = method;
+        mArgs = args;
+    }
+    public void run() {
+        try {
+            mMethod.invoke(null, new Object[] {mArgs});//1
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
+        ···
+    }
+}
+```
+
+注释1处的mMethod指的是SystemServer的main方法，调用了mMethod的invoke方法后，SystemServer的main方法就会被动态调用，SystemServer进程就进入了SystemServer的main方法中。
+
+#### 解析SystemServer进程
+
+下面来查看SystemServer的main方法：
+
+frameworks/base/services/java/com/android/server/SystemServer.java
+
+```java
+public static void main(String[] args) {
+    new SystemServer().run();
+}
+```
+
+main方法中只有调用了SystemServer的run方法：
+
+framworks/base/services/java/com/android/server/SystemServer.java
+
+```java
+private void run() {
+    try {
+        ···
+        //创建消息Looper
+        Looper.prepareMainLooper();
+        //加载了动态库libandroid_services.so
+        System.loadLibrary("android_servers");//1
+        performPendingShutdown();
+        //创建系统的Context
+        createSystemContext();
+        mSystemServiceManager = new SystemServiceManager(mSystemContext);//2
+        mSystemServiceManager.setRuntimeRestarted(mRuntimRestart);
+        LocalService.addService(SystemServiceManager.class, mSystemServiceManager);
+        SystemServerInitThreadPool.get();
+    } finally {
+        traceEnd();
+    }
+    try {
+        traceBeginAndSlog("StartServices");
+        //启动引导服务
+        startBootstrapServices();//3
+        //启动核心服务
+        startCoreServices();//4
+        //启动其他服务
+        startOtherServices();//5
+        SystemServerInitThreadPool.shutdown();
+    } catch (Throwable ex) {
+        Slog.e("System", "******************************************");
+        Slog.e("System","************ Failure starting system services", ex);
+        throw ex;
+    } finally {
+        traceEnd();
+    }
+    ···
+}
+```
+
+在注释1处加载了动态库libandroid_servers.so。接下来在注释2处创建SystemServiceManager，它会对系统服务进行创建、启动和生命周期管理。在注释3处的startBootstrapServices方法中用SystemServiceManager启动了ActivityManagerService、PowerManagerService、PackageManagerService等服务。在注释4处的startCoreServices方法中则启动了DropBoxManagerService、BatteryService、UsageStatsService和WebViewUpdateService。在注释5处的startOtherServices方法中启动了CameraService、AlarmManagerService、VrManagerService等服务。这些服务的父类均为SystemService。从注释3、4、5的方法中可以看出，官方把系统服务分为三种类型，分别是引导服务、核心服务和其他服务，其中服务是一些非紧要和不需要立即启动的服务。这些系统服务总共有100多个，表中列出部分系统服务及其作用。
+
+<img src="./Android进阶解密.assets/image-20231204153150469.png" alt="image-20231204153150469" style="zoom: 33%;" />
+
+这些系统服务启动逻辑是相似的，这里以启动PowerManagerService来进行举例：
+
+```java
+mPowerManagerService = mSystemServiceManager.startService(PowerManagerService.class);
+```
+
+SystemServiceManager的startService方法启动了PowerManagerService：
+
+frameworks/base/services/core/java/com/android/server/SystemServiceManager.java
+
+```java
+public void startService(@NonNull final SystemService service) {
+    //注册Service
+    mServices.add(service);//1
+    long time = System.currentTimeMillis();
+    try {
+        //启动Service
+        service.onStart();//2
+    } catch (RuntimeException ex) {
+        throw new RuntimeException("Failed to start service" + service.getClass().getName() + ":onStart threw an exception", ex);
+    }
+    warnIfTooLong(System.currentTimeMillis() - time, service, "onStart");
+}
+```
+
+在注释1处将PowerManagerService添加到mService中，其中mService是一个存储SystemService类型的ArrayList，这样就完成了PowerManagerService的注册工作。在注释2处调用PowerManagerService的onStart函数完成启动PowerManagerService。
+
+除了mSystemServiceManager的startService函数来启动系统服务外，也可以通过如下形式来启动系统服务，以PackageManagerService为例：
+
+framework/base/services/core/java/com/android/server/pm/PackageManagerService.java
+
+```java
+public static PackageManagerService main(Context context, Installer installer, boolean factoryTest, boolean onlyCore) {
+    //自检初始化的设置
+    PackageManagerServiceCompilerMapping.checkProperties();
+    PackageManagerService m = new PackageManagerService(context, installer, factoryTest, onlyCore);//1
+    m.enableSystemUserPackages();
+    ServiceManager.addService("package", m);//2
+    return m;
+}
+```
+
+在注释1直接创建PackageManagerService并在注释2处将PackageManagerService注册到ServiceManager中，ServiceManager用来管理系统中的各种Service，用于系统C/S架构中的Binder通信机制：Client端要使用某个Service，则需要先到ServiceManager查询Service的相关信息，然后根据Service的相关信息与Service所在的Server进程建立通信通路，这样Client端就可以使用Service了。
 
