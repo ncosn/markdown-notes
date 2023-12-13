@@ -1,4 +1,4 @@
-## Android系统架构
+## Android系统架构与系统启动
 
 ### Android系统架构
 
@@ -62,9 +62,9 @@ Android和核心服务基于Linux内核，在此基础上添加了部分Android�
 
 
 
-### Android系统启动
+## Android系统启动
 
-#### init进程启动过程
+### init进程启动过程
 
 `init`进程是Android系统中用户空间的第一个进程，进程号为1，作为第一个进程被赋予了很多极其重要的工作职责，比如创建Zygote（孵化器）和属性服务。init进程由多个源文件共同组成，位于源码目录`system/core/init`中。
 
@@ -78,7 +78,7 @@ android系统启动流程的前几步
 
 2. 引导程序BootLoader
 
-   BootLoader是在Android操作同开始运行前的一个小程序，主要作用是把系统OS拉起来并运行。
+   BootLoader是在Android操作系统开始运行前的一个小程序，主要作用是把系统OS拉起来并运行。
 
 3. Linux内核启动
 
@@ -419,7 +419,7 @@ init 程启动做了很多的工作，总的来说主要做了以下三件事：
 
 ### Zygote进程启动过程
 
-Android系统中，DVM和ART、应用程序进程以及运行系统的关键服务的SystemServer进程都是有Zygote进程来创建的，我们也将它成为孵化器。它通过fock（复制进程）的形式来创建应用程序和SystemServer进程，由于Zygote进程在启动时会创建DVM或者ART，因此通过fock而创建的应用程序进程和SystemServer进程可以在内部获取一个DVM或者ART的实例副本。
+Android系统中，**DVM和ART**、**应用程序进程**以及**运行系统的关键服务的SystemServer进程**都是有Zygote进程来创建的，我们也将它成为孵化器。它通过fock（复制进程）的形式来创建应用程序和SystemServer进程，由于Zygote进程在启动时会创建DVM或者ART，因此通过fock而创建的应用程序进程和SystemServer进程可以在内部获取一个DVM或者ART的实例副本。
 
 我们已经知 Zygote 进程是 init 进程启动时创建的，起初 Zygote 进程的名称并不是叫"zygote"，而是叫"app_process"，这个名称是在 Android.mk 中定义的，Zygote 进程启动后， Linux 系统下的 pctrl 系统会调用 app_process，将其名称换成了"zygote"。
 
@@ -492,6 +492,8 @@ Zygote进程都是通过fock自身来创建子进程的，这样Zygote进程以�
 
 在注释5处，如果zygote为true，就说明运行在Zygote线程中，就会调用注释6处的AppRuntime的start函数：
 
+##### 1、AndroidRuntime.cpp
+
 frameworks/base/core/jni/AndroidRuntime.cpp
 
 ```c++
@@ -548,6 +550,8 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
 注释1调用startVm函数来创建Java虚拟机，在注释2处调用startReg函数为Java虚拟机注册JNI方法。注释3处的className的值是传进来的参数，他的值为com.android.internal.os.ZygoteInit。在注释4处通过toSlashCalssName，将className的“.”替换为“/”，替换后的值为com/android/internal/os/ZygoteInit并赋值给slashClassName，接着在注释5处根据slashClassName找到Zygotelnit,找到了Zygotelnit后顺理成章地在注释6处找到Zygotelnit的main方法。最终会在注释7处通过JNI调用Zygotelnit的main方法。这里为何要使用JNI呢?因为Zygotelnit的main方法是由Java语言编写的，当前的运行逻辑在Native中，这就需要通过JNI来调用Java。这样Zygote就从Native层进入了Java框架层。
 
 在我们通过JNI调用ZygoteInit的main方法后，Zygote便进入了Java框架层，此前是没有任何代码进入Java框架层的，换句话说是Zygote开创了Java框架层。该main方法代码如下：
+
+##### 2、ZygoteInit.java
 
 frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
 
@@ -740,14 +744,14 @@ void runSelectLoop(String abiList) throws Zygote.MethodAndArgsCaller {
 #### Zygote进程启动总结
 
 1. 创建AppRuntime并调用其start方法，启动Zygote进程
-2. 创建Java虚拟机并为Java虚拟机注册JNI方法
+2. 创建Java虚拟机并为Java虚拟机注册JNI方法（AndroidRuntime的start方法中）
 3. 通过JNI调用ZygoteInit的main函数进入Zygote的Java框架层
 4. 通过registerZygoteSocket方法创建服务器端Socket，并通过runSelectLoop方法等待AMS的请求来创建新的应用程序进程
 5. 启动SystemServer进程
 
 ### SystemServer处理过程
 
-SystemServer进程主要用于创建系统服务，AMS、WMS和PMS都由它来创建。
+SystemServer进程主要用于创建**系统服务**，**AMS**、**WMS**和**PMS**都由它来创建。
 
 #### Zygote处理SystemServer进程
 
@@ -793,7 +797,7 @@ private static void handleSystemServerProcess (ZygoteConnection.Arguments parseA
 }
 ```
 
-注释1处创建了PathClassLoader，关于PathClassLoader在十二章介绍，在注释2处调用了ZygoteInit的ZygoteInit方法：
+注释1处创建了PathClassLoader，关于PathClassLoader在十二章介绍，在注释2处调用了ZygoteInit的zygoteInit方法：
 
 frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
 
@@ -907,7 +911,7 @@ public static void main(String argv[]) {
     ···
     	closeServerSocket();
 	} catch (MethodAndArgsCaller caller) {
-    	caller.run();
+    	caller.run();//1
 	} catch (RuntimeException ex) {
     Log.e(TAG, "Zygote died with exception", ex);
     closeServerSocket();
@@ -1042,4 +1046,1081 @@ public static PackageManagerService main(Context context, Installer installer, b
 ```
 
 在注释1直接创建PackageManagerService并在注释2处将PackageManagerService注册到ServiceManager中，ServiceManager用来管理系统中的各种Service，用于系统C/S架构中的Binder通信机制：Client端要使用某个Service，则需要先到ServiceManager查询Service的相关信息，然后根据Service的相关信息与Service所在的Server进程建立通信通路，这样Client端就可以使用Service了。
+
+#### SystemServer进程总结
+
+SystemServer进程被创建后主要做了如下工作：
+
+1. 启动Binder线程池，这样就可以与其他进程进行通信
+2. 创建SystemServiceManager，其用于对系统的服务进行创建、启动和生命周期管理
+3. 启动各种系统服务
+
+
+
+### Launcher启动过程
+
+系统启动的最后一步是启动一个应用程序来显示系统中已经安装的应用程序，这个应用程序就叫做Launcher。Launcher在启动过程中会请求PackageManagerService返回系统中已经安装的应用程序的信息，并将这些信息封装成一个快捷图标列表显示在系统屏幕上，这样用户可以通过点击这些快捷图标来启动相应的应用程序。
+
+通俗来讲Launcher就是Android系统的桌面，主要作用有两点：
+
+1. 作为Android系统的启动器，用于启动应用程序。
+2. 作为Android系统的桌面，用户显示和管理应用程序的快捷图标或者其他桌面组件。
+
+
+
+#### Launcher启动过程
+
+SystemServer在启动过程中会启动PackageManagerService，PackageManagerService启动后会将系统中的应用程序安装完成。在此之前已经启动的AMS会将Launcher启动起来，Launcher启动过程如图：
+
+![image-20231205091806205](./Android进阶解密.assets/image-20231205091806205.png)
+
+启动Launcher的入口为AMS的systemReady方法，它在SystemServer的startOtherServices方法中被调用：
+
+frameworks/base/services/ajva/com/andorid/servere/SystemServer.java
+
+```java
+private void startOtherServices() {
+    ···
+    mActivityManagerService.systemReady(()-> {//1
+        Slog.i(TAG,"Making services ready");
+        traceBeginAndSlog("StartActivityManagerReadyPhase");
+        mSystemServiceManager.startBootPhase(SystemService.PHASE_ACTIVITY_MANAGER_READY);
+    	···
+    }
+    ···
+}
+```
+
+与Android 7.1.2源码不同的是，Android 8.0的部分源码引入了Java Lambda表达式，比如注释1处。下面来看AMS的systemReady方法做了什么：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+public void systemReady(final Runnable goingCallback) {
+    ···
+    synchronized (this) {
+        ···
+        mStackSupervisor.resumeFocusedStackTopActivityLocked();
+        mUsesrController.sendUserSwitchBroadcastLocked(-1,currentUserId);
+    }
+}
+```
+
+systemReady方法中调用了ActivityStackSupervisor的resumeFocusedStackTopActivityLocked方法：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityStackSupervisor.java
+
+```java
+boolean resumeFocusedStackTopActivityLocked(ActivityStack targetStack,ActivityRecord target, ActivityOptions targetOptions) {
+    if (targetStack != null && isFoucusedStack(targetStack)) {
+        return targetStack.resumeTopActivityUncheckedLocked(target,targetOptions);//1
+    }
+    ···
+    return false;
+}
+```
+
+在注释1处调用ActivityStack的resumeTopActivityUncheckedLocked方法，ActivityStack对象是用来描述Activity堆栈的，resumeTopActivityUncheckedLocked方法如下：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityStack.java
+
+```java
+boolean resumeTopActivityUncheckedLocked(ActivityRecord prev, ActivityOptions options) {
+    if (mStackSupervisor.inResumeTopActivity) {
+        return false;
+    }
+    boolean result = false;
+    try {
+        mStackSupervisor.inResumeTopActivity = true;
+        result = resumeTopActivityInnerLocked(prev, options);//1
+    } finally {
+        mStackSupervisor.inResumeTopActivity = false;
+    }
+    mStackSupervisor.checkReadyForSleepLocked();
+    return result;
+}
+```
+
+在注释1处调用了resumeTopActivityInnerLocked方法：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityStack.java
+
+```java
+private boolean resumeTopActivityInnerLocked(Activity prev,ActivityOptions options) {
+    ···
+    return isOnHomeDisplay() && mStackSupervisor.resumeHomeStackTask(returnTaskType, prev, "prevFinished");
+    ···
+}
+```
+
+resumeTopActivityInnerLocked方法代码很长，在此仅截取我们要分析的关键部分，调用ActivityStackSupervisor的resumeHomeStackTask方法：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityStackSupervisor.java
+
+```java
+boolean resumeHomeStackTask(ActivityRecord prev, String reason) {
+    ···
+    if (r != null && !r.finishing) {
+        moveFocusableActivityStackToFrontLocked(r, myReason);
+        return resumeFocusedStackTopActivityLocked(mHomeStack, prev, null);
+    }
+    return mService.startHomeActivityLocked(mCurrentUser, myReason);
+}
+```
+
+在resumeHomeStackTask方法中调用了AMS的startHomeActivityLocked方法：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+boolean startHomeActivityLocked(int userId, String reason) {
+    //判断工厂模式和mTopAction的值，符合要求就继续执行下去
+    if (mFactoryTest == FactoryTest.FACTORY_TEST_LOW_LEVEL && mTopAction == null) {//1
+        return false;
+    }
+    //创建Launcher启动所需的Intent
+    Intent intent = getHomeIntent();//2
+    ActivityInfo aInfo = resolveActivityInfo(intent, STOCK_PM_FLAGS, userId);
+    if (aInfo != null) {
+        intent.setComponent(new ComponentName(aInfo.applicationInfo.packageName,aInfo.name));
+        aInfo = new ActivityInfo(aInfo);
+        aInfo.applicationInfo = getAppInfoForUser(aInfo.appllicationInfo, userId);
+        ProcessRecord app = getProcessRecordLocked(aInfo.processName,aInfo.applicationInfo.uid,true);
+        if (app == null || app.instr == null) {//3
+            intent.setFlags(intent.getFlags() | Intent.FLAG_ACIVITY_NEW_TASK);
+            final int resolvedUserId = UserHandle.getUserId(aInfo.applicationInfo.uid);
+            final String myReason = reason + ":" + userId + ":" +resolvedUserId;
+            //启动Launcher
+            mActivityStarter.startHomeActivityLocked(intent, aInfo, myReason);//4
+        }
+    } else {
+        Slog.wtf(TAG, "No home screen found for " + intent + new Throwable());
+    }
+    return true;
+}
+```
+
+注释1处的mFactoryTest代表系统的运行模式，系统的运行模式分为三种，分别是非工厂模式、低级工厂模式和高级工厂模式，mTopAction则用来描述第一个被启动Activity组件的Action，它的默认值为Intent.ACTION_MAIN。因此注释 1 处的代码的意思就是mFactoryTest FactoryTest.FACTORY_TEST LOW_LEVEL （低级工厂模式）并且mTopAction 等于 null 时，直接返回 false 注释 处的 getHomelntent 方法如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+Intent getHomeIntent() {
+    Intent intent = new Intent(mTopAction, mTopData!= null? Uri.parse(mTopData):null);
+    intent.setComponent(mTopComponent);
+    intent.addFlags(Intent.FLAG_DEBUG_TRIAGED_MISSING);
+    if (mFactoryTest != FactoryTest.FACTORY_TEST_LOW_LEVEL) {
+        intent.addCategory(Intent.CATEGORY_HOME);
+    }
+    return intent;
+}
+```
+
+在getHomeIntent方法中创建了Intent，并将mTopAction和mTopData传入。mTopAction的值为Intent.ACTION_MAIN，并且如果系统运行模式不是低级工厂模式，则将intent的Category设置为Intent.CATEGORY_HOME，最后返回该Intent，再回到AMS的startHomeActivityLocked方法，假设系统的运行模式不是低级工厂模式，在注释3处判断符合Action为Intent.ACTION_MAIN、Category为Intent.CATEGORY_HOME的应用程序是否已经启动，如果没启动则调用注释4的方法启动该应用程序。这个这启动的应用程序就是Launcher，因为Launcher的AndroidManifest文件中的intent-filter标签匹配了Action为Intent.ACTION_MAIN，Category为Intent.CATEGORY_HOME。
+
+Launcher的AndroidManifest文件如下所示：
+
+packages/apps/Launcher3/AndroidManifest.xml
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.android.launcher3">
+    <user-sdk android:targetSdkVersion="23" android:minSdkVersion="21" />
+    ···
+    <application ···>
+        <activity android:name="com.android.launcher3.Launcher"
+                  android:launchMode="singleTask"
+                  android:clearTaskOnLaunch="true"
+                  android:stateNoNeeded="true"
+                  android:windowSoftInputMode="adjustPan | stateUnchanged"
+                  android:screenOrientation="nosensor"
+                  android:configChanges="keyboard|keyboardHidden|navigation"
+                  android:resizeableActivity="true"
+                  android:resumeWhilePausing="true"
+                  android:taskAffinity=""
+                  android:enable="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.MONKEY" />
+            </intent-filter>
+        </activity>
+        ···
+    </application>
+</manifest>
+```
+
+可以看到intent-filter设置了android.intent.category.HOME属性，这样名称为com.android.launcher3.Launcher的Activity就成为了主Activity。从前面AMS的startHomeActivityLocked方法的注释4处，我们得知如果Launcher没有启动就会调用Activity的startHomeActivityLocked方法来启动Launcher：
+
+frameworks/base/sevices/core/java/com/android/server/am/ActivityStarter.java
+
+```java
+void startHomeActivityLocked(Intent intent, ActivityInfo aInfo, String reason) {
+    //将Launcher放入HomeStack中
+    mSupervisor.moveHomeStackTaskToTop(reason);//1
+    mlastHomeActivityStartResult = startActivityLocked(null /*caller*/,intent,
+		null /*ephemeralIntent*/,null /*resolvedType*/,aInfo,null /*rInfo*/,
+        null /*voiceSession*/,null /*voiceInteractor*/,null /*resultTo*/,
+        null/*resultWho*/,0/*requestCode*/,0/*callingPid*/,0/*callingUid*/,
+        null /*callingPackage*/,0/*realCallingPid*/,0/*realCallingUid*/,
+        0/*startFlags*/,null /*options*/,false /*ignoreTargetSecurity*/,
+        false /*componentSpecified*/,mLastHomeActivityStartRecord /*outActivity*/,
+        null /*container*/,null /*inTask*/,"startHomeActivitv: " + reason);
+    ···
+}
+```
+
+在注释1处将Launcher放入HomeStack中，HomeStack是在ActivityStackSupervisor中定义的用于存储Launcher的变量。接着调用startActivityLocked方法来启动Launcher，剩余的过程会和Activity的启动过程类似，在第4章介绍。最终进入Launcher的onCreate方法中，到这里Launcher完成了启动。
+
+#### Launcher中应用图标显示过程
+
+Launcher 完成启动后会做很多的工作，作为桌面它会显示应用程序图标， 这与应用程序开发有所关联，应用程序图标是用户进入应用程序的入口，因此我们必要了解Launcher 是如何显示应用程序图标的。
+
+先从Launcher的onCreate方法入手：
+
+packages/apps/Launcher3/src/com/android/launcher3/Launcher.java
+
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    ···
+    LauncherAppState app = LauncherAppState.getInstance();//1
+    mDeviceProfile = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE ? app.getInvariantDeviceProfile().landscapeProfile : app.getInvariantDeviceProfile().portraitProfile;
+    mSharedPrefs = Utilities.getPrefs(this);
+    mIsSafeModeEnabled = getPackageManager().isSafeMode();
+    mModel = app.setLauncher(this);//2
+    ···
+    if (!mRestoring) {
+        if (DISABLE_SYNCHRONOUS_BINDING_CURRENT_PAGE) {
+            mModel.startLoader(PagedView.INVALID_RESTORE_PAGE);//3
+        } else {
+            mModel.startLoader(mWorkspace.getRestorePage());
+        }
+    }
+    ···
+}
+```
+
+在注释1处会调用LauncherAppState的实例，在注释2处调用它的setLauncher方法并将Launcher对象传入，LauncherAppState的setLauncher方法如下：
+
+packages/apps/Launcher3/src/com/android/launcher3/LauncherAppState.java
+
+```java
+LauncherModel setLauncher(Launcher launcher) {
+    getLocalProvider(mContext).setLauncherProviderChangeListener(launcher);
+    mModel.initialize(launcher);//1
+    return mModel;
+}
+```
+
+在注释1处会调用LauncherModel的initialize方法：
+
+packages/apps/Launcher3/src/com/android/launcher3/LauncherModel.java
+
+```java
+public void initialize(Callbacks callbacks) {
+    synchronized (mLock) {
+        unbindItemInfoAndClearQueueBindRunnables();
+        mCallbacks = new WeakReference<Callbacks>(callbacks);
+    }
+}
+```
+
+在initialize方法中会将Callbacks，也就是传入的Launcher，封装成一个弱引用对象。因此我们得知mCallbacks变量指的就是封装成弱引用对象的Launcher，这个mCallbacks③后面会用到它。
+
+> 由于Launcher实现了Callback接口。在mModel中，将传入的Launcher对象向下转型为Callback赋值给mCallbacks变量。并在LauncherModel中获得了一个Callbacks的软引用。通过这一过程，将Launcher对象作为Callback与mModel进行绑定，当mModel后续进行操作时，Launcher可以通过回调得到结果。
+
+再回到Launcher的onCreate方法，在注释3处调用了LauncherModel的startLoader方法：
+
+packages/apps/Launcher3/src/com/android/launcher3/LauncherModel.java
+
+```java
+···
+//创建了具有消息循环的线程HandlerThread对象
+@Thunk static final HandlerThread sWorkerThread = new HandlerThread("launcher-loader");//1
+static {
+    sWorkerThread.start();
+}
+@Thunk staticLoader(boolean isLaunching, int synchronousBindPage) {
+    synchronized (mLock) {
+        if (DEBUG_LOADERS) {
+            Log.d(TAG, "startLoader isLaunching=" + isLaunching);
+        }
+        mDeferredBindRunnables.clear();
+        if (mCallbacks != null && mCallbacks.get() != null) {
+            isLaunching = isLaunching || stopLoaderLocked();
+            mLoaderTask = new LoaderTask(mApp, isLaunching);//3
+            if (synchronousBindPage > -1 && mAllAppsLoaded && mWorkspaceLoaded) {
+                mLoaderTask.runBindSynchronousPage(synchronousBindPage);
+            } else {
+                sWorkerThread.setPriority(Thread.NORM_PRIORITY);
+                sWorker.post(mLoaderTask);//4
+            }
+        }
+    }
+}
+```
+
+在注释1处创建了具有消息循环的线程HandlerThread对象。在注释2处创建了Handler，并且传入HandlerThread的Looper，这里Handler的作用就是向HandlerThread发送消息。在注释3处创建LoaderTask，在注释4处将LoaderTask作为消息发送给HandlerThread。
+
+LoaderTask类实现了Runnable接口，当LoaderTask所描述的信息被处理时，则会调用它的run方法，LoaderTask是LauncherModel的内部类，代码如下：
+
+packages/apps/Launcher3/src/com/android/launcher3/LauncherModel.java
+
+```java
+private class LoaderTask implements Runnable {
+    ···
+    public void run() {
+        synchronized (mLock) {
+            if (mStopped) {
+                return;
+            }
+            mIsLoaderTaskRunning = true;
+        }
+        try {
+            if (DEBUG_LOADERS) Log.d(TAG, "step 1.1:loading workspace");
+            mIsLoadingAndBindingWorkspace = true;
+            //加载工作区信息
+            loadWorkspace();//1
+            verifyNotStopped();
+            if(DEBUG_LOADERS) Log.d(TAG, "step 1.2:bind workspace workspace");
+            //绑定工作区信息
+            bindWorkspace(mPageToBindFirst);//2
+            if (DEBUG_LOADERS) Log.d(TAG, "step 1 completed, wait for idle");
+            waitForIdle();
+            verifyNotStopped();
+            if(DEBUG_LOADERS) Log.d(TAG, "step 2.1:loading all apps");
+            //加载系统已经安装的应用程序信息
+            loadAllApps();//3
+            ···
+        } catch (CancellationException e) {
+        } finally {
+            ···
+        }
+    }
+···
+}
+```
+
+Launcher是用工作区的形式来显示系统安装的应用程序的快捷图标的，每一个工作区都是用来描述一个抽象桌面的，它由n个屏幕组成，每个屏幕又分为n个单元格，每个单元格用来显示一个应用程序的快捷图标。在注释1处和注释2处分别调用loadWorkspace方法和bindWorkspace方法来加载和绑定工作区信息。注释3处的loadAllApps方法用来加载系统已经安装的应用程序信息，代码如下：
+
+packages/apps/Launcher3/src/com/android/launcher3/LauncherModel.java
+
+```java
+private void loadAllApps() {
+    ···
+    mHandler.post(new Runnable() {
+        public void run() {
+            final long bindTime = SystemClock.uptimMillis();
+            final Callbacks callbacks = tryGetCallbacks(oldCallbacks);
+            if (callbacks!=null) {
+                callbacks.bindAllApplications(added);//1
+                if (DEBUG_LOADERS) {
+                    Log.d(TAG, "bound " + added.size() + " apps in" + (SystemClock.uptimeMillis() - bindTime) + "ms");
+                }
+            } else {
+                Log.i(TAG, "not binding apps: no Launcher activity");
+            }
+        }
+    });
+    ···
+}
+```
+
+在注释1处会调用callbacks的bindAllApplications方法，从之前的标注③处我们得知这个callbacks实际是指向Launcher的，下面我们来查看Launcher的bindAllApplications方法：
+
+packages/apps/Launcher3/src/com/andorid/launcher3/Launcher.java
+
+```java
+public void bindAllApplications(final ArrayList<AppInfo> apps) {
+    if (waitUntilResume(mBindAllApplicationsRunnable, true)) {
+        mTmpAppList = apps;
+        return;
+    }
+    if (mAppsView != null) {
+        mAppView.setApps(apps);//1
+    }
+    if (mLauncherCallbacks != null) {
+        mLauncherCallbacks.bindAllApplications(app);
+    }
+}
+```
+
+在注释1处会调用AllAppsContainerView类型的mAppsView对象的setApps方法，并将包含应用信息的列表apps传进去，AllAppsContainerView的setApps方法如下所示：
+
+packages/apps/Launcher3/src/com/android/launcher3/allapps/AllAppsContainerView.java
+
+```java
+public void setApps(List<AppInfo> apps) {
+    mApps.setApps(apps);
+}
+```
+
+setApps方法会将包含应用信息列表apps设置给mApps，这个mApps是AlphabeticalAppsList类型的对象。接着查看AllAppsContainerView的onFinishInflate方法，如下所示：
+
+packages/apps/Launcher3/src/com/android/launcher3/allapps/AllAppsContainerView.java
+
+```java
+@Override
+protected void onFinishInflate() {
+    super.onFinishInflate();
+    ···
+    mAppsRecyclerView = (AllAppsRecyclerView) findViewById(R.id.apps_list_view);//1
+    mAppsRecyclerView.setApps(mApps);//2
+    mAppsRecyclerView.setLayoutManager(mLayoutManager);
+    mAppsRecyclerView.setAdapter(mAdapter);//3
+    ···
+}
+```
+
+onFinishInflate方法会在AllAppsContainerView加载完XML布局时调用，在注释1处得到AllAppsRecyclerView用来显示App列表，并在注释2处将次前的mApps设置进去，在注释3处为AllAppsRecyclerView设置Adapter。这样显示应用程序快捷图标的列表就会显示在屏幕上。
+
+到这里Launcher中应用图标显示过程以及Launcher启动流程结束，接下来介绍Android系统启动流程。
+
+
+
+#### Android系统启动流程
+
+结合本章前4节的内容，我们可以清晰地总结出 Android 系统启动流程，这个流程主要有以下几个部分。
+
+1. 启动电源以及系统启动
+   当电源按下时引导芯片代码从预定义的地方(固化在 ROM)开始执行。加载引导程序BootLoader 到 RAM，然后执行。
+2. 引导程序 BootLoader
+   引导程序 BootLoader 是在 Android 操作系统开始运行前的一个小程序，它的主要作用是把系统OS 拉起来并运行。
+3. Linux内核启动
+   当内核启动时，设置缓存、被保护存储器、计划列表、加载驱动。当内核完成系统设置时，它首先在系统文件中寻找init.rc 文件，并启动 init 进程
+4. init 进程启动
+   初始化和启动属性服务，并且启动 Zygote进程
+5. Zygote 进程启动
+   创建 Java 虚拟机并为 Java 虚拟机注册JNI 方法，创建服务器端 Socket，启动SystemServer 进程。
+6. SystemServer 进程启动
+   启动 Binder 线程池和SystemServiceManager，并且启动各种系统服务。
+7. Launcher启动
+   被SystemServer进程启动的AMS会启动Launcher，Launcher启动后会将已安装应用的快捷图标显示到界面上。
+
+结合上面流程给出Android系统启动流程图：
+
+<img src="./Android进阶解密.assets/image-20231205161254714.png" alt="image-20231205161254714" style="zoom:33%;" />
+
+
+
+## 应用程序进程启动
+
+这里的“应用程序**进程**启动过程”区别于“应用程序启动过程（根Activity启动过程）”
+
+要想启动一个应用程序，首先要保证这个应用程序所需要的应用程序进程已经启动。AMS在启动应用程序时会检查这个应用程序需要的应用程序进程是否存在，不存在就会请求 Zygote 进程启动需要的应用程序进程。在2.2节中，我们知道在 Zygote 的Java 框架层中会创建一个 Server端的 Socket，这个 Socket 用来等待AMS 请求 Zygote 来创建新的应用程序进程。Zygote进程通过fock自身创建应用程序进程,这样应用程序进程就会获得Zygote进程在启动时创建的虚拟机实例。当然，在应用程序进程创建过程中除了获取虚拟机实例外，还创建了 Binder 线程池和消息循环，这样运行在应用进程中的应用程序就可以方便地使用Binder 进行进程间通信以及处理消息了。
+
+
+
+
+
+### 应用程序进程启动过程介绍
+
+应用程序进程创建过程步骤较多，分为两个部分来讲解，分别是AMS发送启动应用进程请求，以及Zygote接受请求并创建应用程序进程。
+
+#### AMS发送启动应用程序请求
+
+![image-20231206105541527](./Android进阶解密.assets/image-20231206105541527.png)
+
+AMS如果想要启动应用时序进程，就需要向Zygote进程发送创建应用程序的请求，AMS会通过startProcessLocked方法向Zygote进程发送请求：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+private final void startProcessLocked(ProcessRecord app, String hostingType, String hostingNameStr, String abiOverride, String entryPoint, String[] entryPointArgs) {
+    ···
+    try {
+        try {
+            final int userId = UserHandle.getUserId(app.uid);
+            AppGlobals.getPackageManager().checkPackageStartable(app.info.packageName, userId);
+        } catch (RemoteException e) {
+            throw e.rethrowAsRuntimeException();
+        }
+        //获取要创建的应用程序的用户ID
+        int uid = app.uid;//1
+        int[] gids = null;
+        int mountExternal = Zygote.MOUNT_EXTERNAL_NONE;
+        if (!app.isolated) {
+            ···
+            /**
+            * 2 对gids进行创建和赋值
+            */
+            if (ArrayUtils.isEmpty(perGids)) {
+                gids = new int[3];
+            } else {
+                gids = new int[perGids.length+3];
+                System.arraycopy(permGids,0,gids,permGids.length);
+            }
+            gids[0] = UserHandle.getSharedAppGid(UserHandle.getAppId(uid));
+            gids[1] = UserHandle.getCacheAppGid(UserHandle.getAppId(uid));
+            gids[2] = UserHandle.getUserGid(UserHandle.getUserId(uid));
+        }
+        ···
+        if (entryPoint == null) entryPoint = "android.app.ActivityThread";//3
+        Trace.traceBegin(Trace.TRACE_ACTIVITY_MANAGER, "Start proc: " + app.processName);
+        checkTime(startTime, "startProcess: asking zygote to start proc");
+        ProcessStartResult startResult;
+        if (hostingType.equals("webview_service")) {
+            startResult = startWebView(entryPoint, app.processName, uid, uid, git, debugFlags,mountExternal, app.info.targetSKDVersion, seInfo, requiredAbi, instructionSet, app.info.dataDir, null, entryPointArgs);
+        } else {
+            /**
+            * 4 启动应用程序进程
+            */
+            startResult = Process.start(entryPoint,
+				app.processName, uid, uid, gids, debugFlags, mountExternal, 
+                app.info.targetSdkVersion, seInfo, requiredAbi, instructionSet, 
+				app.info.dataDir, invokeWith, entryPointArgs);
+        }
+        ···
+    } catch (RuntimeException e) {
+        ···
+    }
+}
+```
+
+在注释1处得到创建应用程序进程的用户ID，在注释2处对用户组ID（gids）进行创建和赋值。在注释3处如果entryPoint为null，则赋值为android.app.ActivityThread，这个值就是应用程序进程主线程的类名。在注释4处调用Process的start方法，将此前得到的应用程序进程用户ID和用户组ID传进去，第一个参数entryPoint我们得知是android.app.ActivityThread，后面章节还会介绍。接下来查看Process的start方法：
+
+frameworks/base/core/java/android/os/Process.java
+
+```java
+public static final ProcessStartResult start(final String processClass,
+						final String niceName,
+                        int uid, int gid, int[] gids,
+                        int debugFlags, int moutExternal,
+                        int targetSdkVersion,
+                        String seInfo,
+                        String abi,
+                        String instructionSet,
+                        String appDataDir,
+                        String invokeWith,
+                        String[] zygoteArgs) {
+    return zygoteProcess.start(processClass, niceName, uid, gid, gids,
+			debugFlags, mountExternal, targetSdkVersion, seInfo,
+            abi, instructionSet, appDataDir, invokeWith, zygoteArgs);
+}
+```
+
+在Process的start方法中调用了ZygoteProcess的start方法，其中ZygoteProcess类用于保持与Zygote进程的通信状态。该start方法如下：
+
+frameworks/base/core/java/android/os/ZygoteProcess.java
+
+```java
+public final Process.ProcessStartResult start(final String processClass,
+										final String niceName,
+                                        int uid, int gid, int[] gids,
+                                        int debugFlags, int mountExternal,
+                                        int targetSdkVersion,
+                                        String seInfo,
+                                        String abi,
+                                        String instructionSet,
+                                        String appDataDir,
+                                        String invokeWith,
+                                        String[] zygoteArgs) {
+    try {
+        return startViaZygote(processClass, niceName, uid, gid, gids,
+				debugFlags, mountExternal, targetSdkVersion, seInfo,
+                abi, instructionSet, appDataDir, invokeWith, zygoteArgs);
+    } catch (ZygoteStartWithFailedEx ex) {
+        Log.e(LOG_TAG, "Starting VM process through Zygote failed");
+        throw new RuntimeException ("Starting VM process through Zygote failed", ex);
+    }
+}
+```
+
+ZygoteProcess的start方法调用了startViaZygote方法：
+
+frameworks/base/core/java/android/os/ZygoteProcess.java
+
+```java
+private Process.ProcessStartResult startViaZygote(final String processClass,final String niceName, final int uid, final intgid,final int[] gids,int debugFlags,int mountExternal,int targetSdkVersion,String seInfo,String abi,
+String instructionSet,String appDataDir,String invokeWith,
+String[] extraArgs)throws ZygoteStartFailedEx {
+    /**
+    * 1 创建字符串列表 argsForZygote,并将应用进程的启动参数保存在 argsForZygote 中
+    */
+	ArrayList<String> argsForZygote = new ArrayList<String>();
+	argsForZygote.add("--runtime-args");
+	argsForZygote.add("--setuid=" + uid);
+	argsForZygote.add("--setgid=" + gid);
+	if((debugFlags & Zygote.DEBUG_ENABLE_JNI_LOGGING)!= 0){
+		argsForZygote.add("--enable-jni-logging");
+    }
+    ···
+	synchronized(mLock){
+		return zygoteSendArgsAndGetResult(openZygoteSocketIfNeeded(abi),argsForZygote);
+    }
+}
+```
+
+在注释1处创建了字符串列表argsForZygote，并将启动应用进程的启动参数保存在argsForZygote中，方法的最后会调用zygoteSendArgsAndGetResult方法，需要注意的是，zygoteSendArgsAndGetResult方法的第一个参数中调用了openZygoteSocketlfNeeded方法①，而第二个参数是保存应用进程的启动参数的argsForZygote。zygoteSendArgsAndGetResult方法如下所示：
+
+frameworks/base/core/java/android/os/ZygoteProcess.java
+
+```java
+@GuardedBy("mLock")
+private static Process.ProcessStartResult zygoteSendArgsAndGetResult(ZygoteState zygoteState, ArrayList<String>args) throws ZygoteStartFailedEx {
+    try {
+        int sz =args.size();
+        for(int i=0;i<sz;i++){
+            if(args.get(i).indexOf('\n')>=0){
+                throw new ZygoteStartFailedEx("embedded newlines not allowed");
+            }
+        }
+        final BufferedWriter writer =zygoteState.writer;
+        final DataInputStream inputStream =zygoteState.inputStream;
+        writer.write(Integer.toString(args.size()));
+        writer.newLine();
+        for(int i=0;i<sz;i++){
+            String arg =args.get(i);
+            writer.write(arg);
+            writer.newLine();
+        }
+        writer.flush();
+        Process.ProcessStartResult result =new Process.ProcessStartResult();
+        result.pid =inputStream.readInt();
+        result.usingWrapper =inputstream.readBoolean();
+        if(result.pid<0){
+            throw new ZygoteStartFailedEx("fork()failed");
+        }
+        return result;
+    } catch (IOException ex){
+        zygoteState.close();
+        throw new ZygoteStartFailedEx(ex);
+    }
+}
+```
+
+zygoteSendArgsAndGetResult方法的主要作用就是将传入的应用进程的启动参数argsForZygote写入ZygoteState中，ZygoteState是ZygoteProcess的静态内部类，用于表示与Zygote进程通信的状态。结合前面的标注①我们知道ZygoteState其实是由openZygoteSocketIfNeeded方法返回的，那么我们接着来看openZygoteSocketIfNeeded方法做了什么：
+
+frameworks/base/core/java/android/os/ZygoteProcess.java
+
+```java
+@GuardedBy("mLock")
+private ZygoteState openZygoteSocketIfNeeded (String abi) throws ZygoteStartFailedEx {
+    Preconditions.checkState(Thread.holdsLock(mLock),"ZygoteProcess lock not held");
+    if(primaryZygoteState == null || primaryZygotestate.isClosed() {
+        try {
+            //与 Zygote 进程建立 Socket 连接
+            primaryZygoteState = ZygoteState.connect(mSocket);//1
+        } catch(IOException ioe){
+            throw new ZygoteStartFailedEx("Error connecting to primary zygote", ioe);
+        }
+    }
+    
+    //连接Zygote主模式返回的ZygoteState是否与启动应用程序进程所需要的ABI匹配
+    if(primaryZygoteState.matches(abi)) {//2
+        return primaryZygoteState;
+    }
+    
+    //如果不匹配，则尝试连接Zygote辅模式
+    if(secondaryZygoteState == null || secondaryZygoteState.isClosed()) {
+        try {
+            secondaryZygoteState = ZygoteState.connect(mSecondarySocket);//3
+        } catch(IOException ioe){
+            throw new ZygoteStartFailedEx("Error connecting to secondary zygote",ioe);
+        }
+    }
+       
+    //连接Zygote辅模式返回的ZygoteState是否与启动应用程序进程所需要的ABI匹配
+	if(secondaryZygoteState.matches(abi)) {//4
+		return secondaryZygoteState;
+    }
+    
+    throw new ZygoteStartFailedEx("Unsupported zygote ABI:" + abi);
+}
+```
+
+在2.2节讲到Zygote进程启动过程时我们得知，在Zygote的main方法中会创建name为“zygote”的Server端Socket。在注释1处会调用ZygoteState的connect方法与名称为ZYGOTE_SOCKET的Socket建立连接，这里ZYGOTE_SOCKET的值为“zygote”，也就是说，在注释1处与Zygote进程建立Socket连接，并返回ZygoteState类型的primaryZygoteState对象，在注释2处如果primaryZygoteState与启动应用程序进程所需的ABI不匹配，则会在注释3处连接name为“zygote_secondary”的Socket。在2.2.2节中讲到过Zygote的启动脚本有4种，如果采用的是init.zygote32_64.rc或者init.zygote64_32.rc，则name为“zygote”的为主模式，name为“zygote_secondary”的为辅模式，那么注释2和注释3处的意思简单来说就是，如果连接 Zygote 模式返回的 ZygoteState 与启动应用程序进程所需的 ABI 不匹配， 连接 Zygote 辅模式。如果在注释4连接 Zygote 辅模式返回的 ZygoteState 与启动应用程序进程所需的 ABI 也不匹配， 则抛出 ZygoteStartFailedEx 异常。
+
+#### Zygote接受请求并创建应用程序进程
+
+![image-20231206143002345](./Android进阶解密.assets/image-20231206143002345.png)
+
+Socket连接成功并匹配ABI后会返回ZygoteState类型对象，我们在分析zygoteSendArgsAndGetResult方法中讲过，会将应用进程的启动参数 argsForZygote 写入ZygoteState中，这样Zygote进程就会收到一个创建新的应用程序的请求，我们回到ZygoteInit的main方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static void main(String argv[]) {
+    ···
+    try{
+        ···
+        //创建一个Server端的Sokect，socketName的值为“zygote”
+        zygoteServer.registerServerSocket(socketName);//1
+            if (!enbaleLazyPreload) {
+            bootTimingTraceLog.traceBegin("ZygotePreload");
+            EventLog.writeEvent(LOG_BOOT_PROGRESS_PRELOAD_START,
+                               SystemClock.uptimeMillis());
+            //预加载类和资源
+            preload(bootTimingsTraceLog);//2
+            EventLog.writeEvent(LOG_BOOT_PROGRESS_PRELOAD_END,
+                               SystemClock.uptimeMillis());
+            bootTimingsTraceLog.traceEnd();
+        } else {
+            Zygote.resetNicePriority();
+        }
+        ···
+        if (startSystemServer) {
+            // 启动SystemServer进程
+            startSystemServer(abiList, socketName, zygoteServer);//3
+        }
+        Log.i(TAG,"Accepting command socket connections");
+        //等待AMS请求
+        zygoteServer.runSelectLoop(abiList);//4
+        zygoteServer.closeServerSocket();
+    } catch (Zygote.MethodAndArgsCaller caller) {
+        caller.run();
+    } catch (Throwable ex) {
+        Log.e(TAG,"System zygote died with exception", ex);
+        zygoteServer.closeServerSocket();
+        throw ex;
+    }
+}
+```
+
+这些内容在2.2.3讲过，这里在讲一遍。在注释1处通过registerZygoteSocket方法创建了一个Server端的Socket，这个name为“zygote”的Socket用来等待AMS请求Zygote，以创建新的应用程序进程，关于AMS后面的章节会进行介绍。在注释2处预加载类和资源。在注释3处启动SystemServer进程，这样系统的服务也会由SystemServer进程启动起来。在注释4处调用ZygoteServer的runSelectLoop方法来等待AMS请求创建新的应用程序进程。下面来看ZygoteServer的runSelectLoop方法：
+
+frameworks/base/core/java/com/andorid/internal/os/ZygoteServer.java
+
+```java
+void runSelectLoop(String abiList) throws Zygote.MethodAndArgsCaller {
+    ArrayList<FileDesciptor> fds = new ArrayList<FileDesciptor>();
+    ArrayList<ZygoteConnection> peers = new ArrayList<ZygoteConnection>();//1
+    fds.add(mServerSocket.getFileDesciptor());
+    peers.add(null);
+    //无线循环等待AMS请求
+    while (true) {
+        ···
+        for (int i = pollFds.length-1; i>=0;--i) {
+        	if ((pollFds[i].revents & POOLIN) == 0) {
+                continue;
+            }
+            if (i==0) {
+                ZygoteConnection newPeer = acceptCommandPeer(abiList);
+                peers.add(newPeer);
+                fds.add(newPeer.getFileDesciptor());
+            } else {
+                boolean done = peers.get(i).runOnce(this);//2
+                if (done) {
+                    peers.remove(i);
+                    fds.remove(i);
+                }
+            }
+        }
+    }
+}
+```
+
+当有AMS的请求数据到来时，会调用注释2处的代码，结合注释1处的代码，我们得知注释2处的代码其实是调用ZygoteConnection的runOnce方法来处理请求数据：
+
+```java
+boolean runOnce(ZygoteServer zygoteServer) throws Zygote.MethodAndArgsCaller {
+    String args[];
+    Arguments parseArgs = null;
+    FileDescriptor[] descriptors;
+    try {
+        // 获取应用程序的启动参数
+        args = readArgumentList();//1
+        descriptors = mSocket.getAncillaryFileDescriptors();
+        cloaseSocket();
+        return true;
+    }
+    ···
+    try {
+        parsedArgs = new Arguments(args);//2
+        ···
+        /**
+        * 3 创建应用程序进程
+        */
+        pid = Zygote.forkAndSpecialize(parsedArgs.uid, parsedArg.gid, parsedArgs.gids,
+		parsedArgs.debugFlags, rlimits, parsedArgs.mountExternal, parsedArgs.seInfo,
+        parsedArgs.niceName, fdsToClose, fdsToIgnore, parsedArgs.instructionSet,
+        parsedArgs.appDataDir);
+    } catch (ErrnoException ex) {
+        ···
+    }
+    try {
+        // 当前代码逻辑运行在子逻辑中
+        if (pid == 0) {
+            zygoteServer.closeServerSocket();
+            IoUtils.closeQuietly(serverPipeFd);
+            serverPipeFd = null;
+            // 处理应用程序进程
+            handleChildProc(parsedArgs, descriptors,childPipeFd, newStderr);
+            return true;
+        } else {
+            IoUtils.closeQuietly(childPipeFd);
+            childPipeFd = null;
+            return handleParentProc(pid, desciptors, serverPipeFd, parsedArgs);
+        }
+    } finally {
+        IoUtils.closeQuietly(childPipeFd);
+        IoUtils.closeQuietly(serverPipeFd);
+    }
+}
+```
+
+在注释1处调用readArgumentList方法来获取应用程序进程的启动参数，并在注释2处将readArgumentList方法返回的字符串数组args封装到Arguments类型的parsedArgs对象中。在注释3处调用Zygote的forkAndSpecial方法来创建应用程序进程，参数为parsedArgs中存储的应用进程启动参数，返回值为pid。forkAndSpecialize方法主要是通过fork当前进程来创建一个子进程的，如果pid等于0，则说明当前代码逻辑运行在新创建的子进程（应用程序进程）中，这是就会调用handleChildProc方法来处理应用程序进程：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteConnection.java
+
+```java
+private void handleChildProc(Arguments parsedArgs, FileDescriptor[]descriptors, FileDescriptor pipeFd, PrintStreamnewStderr) throws Zygote.MethodAndArgsCaller {
+    ···
+    if(parsedArgs.invokeWith !=null) {
+        WrapperInit.execApplication(parsedArgs.invokeWith,
+				parsedArgs.niceName,parsedArgs.targetSdkVersion,
+                VMRuntime.getCurrentInstructionSet(),
+                pipeFd,parsedArgs.remainingArgs);
+    } else {
+        ZygoteInit.zygoteInit(parsedArgs.targetSdkVersion,
+				parsedArgs.remainingArgs,null /*classLoader */);
+    }
+}
+```
+
+handleChildProc方法中调用了ZygoteInit的zygoteInit方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static final void zygoteInit(int targetSdkVersion,String[]argv,
+		ClassLoader classLoader) throws Zygote.MethodAndArgsCaller {
+    if(RuntimeInit.DEBUG) {
+        Slog.d(RuntimeInit.TAG,"RuntimeInit:Starting application from zygote");
+    }
+    Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,"ZygoteInit");
+    RuntimeInit.redirectLogStreams();
+    RuntimeInit.commonInit();
+    ZygoteInit.nativeZygoteInit();//1
+    RuntimeInit.applicationInit(targetSdkVersion,argv,classLoader);//2
+}
+```
+
+在注释1处会在新创建的应用程序进程中创建Binder线程池，这将在3.3节详细介绍。在注释2处调用了RuntimeInit的applicationInit方法：
+
+handleChildProc方法中调用了ZygoteInit的zygoteInit方法：
+
+frameworks/base/core/java/com/android/internal/os/RuntimeInit.java
+
+```java
+protected static void applicationInit(int targetSdkVersion,String[]argv,ClassLoader classLoader) throws Zygote.MethodAndArgsCaller {
+    ···
+    final Arguments args;
+    try {
+        args = new Arguments(argv);
+    } catch (IllegalArgumentException ex) {
+        Slog.e(TAG,ex.getMessage());
+        return;
+    }
+    Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+    invokeStationMain(args.startClass, args.startArgs, classLoader);//1
+}
+```
+
+在applicationInit方法中会在注释1处调用invokeStaticMain方法，需要注意的是，第一个参数args.startCalss，它指的就是本章开头提到的参数android.app.ActivityThread。接下来来看invokeStaticMain方法：
+
+frameworks/base/core/java/com/android/internal/os/RuntimeInit.java
+
+```java
+private static void invokeStaticMain(String className, String[]argv, ClassLoaderclassLoader) throws Zygote.MethodAndArgsCaller {
+    Class<?> cl;
+    try {
+        //获得android.app.ActivityThread类
+        cl =Class.forName(className,true,classLoader);//1
+    } catch (ClassNotFoundException ex){
+        throw new RuntimeException(
+            "Missing class when invoking static main "+className,
+            ex);
+    }
+    Method m;
+    try {
+        //获得ActivityThread的main方法
+        m=cl.getMethod("main",new Class[]{String[].class });//2
+    } catch (NoSuchMethodException ex){
+        throw new RuntimeException(
+            "Missing static main on "+className,ex);
+    }
+    ···
+    throw new Zygote.MethodAndArgsCaller(m,argv);//3
+}
+```
+
+可以看到在注释1处通过反射获得了android.app.ActivityThread类，接下来在注释2处获得了ActivityThread的main方法，并将main方法传入注释3处的Zygote中的MethodAndArgsCaller类的构造方法中。在注释3处抛出的MethodAndArgsCaller异常会被Zygote的main方法捕获，至于这里为何采用了抛出异常而不是直接调用ActivityThread的main方法，原理和本书2.3.1节Zygote处理SystemServer进程是一样的，这种抛出异常的处理会清除所有的设置过程需要的堆栈帧，并让ActivityThread的main方法看起来像是应用程序进程的入口方法。下面来查看Zygotelnit.java的main方法是如何捕获MethodAndArgsCaller异常的，如下所示：
+
+frameworks/base/core/java/com/android/internal/os/Zygotelnit.java
+
+```java
+public static void main(String argv[]){
+    ···
+        closeServerSocket();
+	} catch (MethodAndArgsCaller caller){
+    	caller.run();//1
+	} catch(RuntimeException ex){
+    	Log.e(TAG,"Zygote died with exception",ex);
+    	closeServerSocket();
+    	throw ex;
+	}
+}
+```
+
+当捕获到MethodAndArgsCaller异常时，就会在注释1处调用MethodAndArgsCaller的run方法，MethodAndArgsCaller是Zygote.java的静态内部类：
+
+frameworks/base/core/java/com/android/internal/os/Zygote.java
+
+```java
+public static class MethodAndArgsCaller extends Exceptionimplements Runnable {
+    private final Method mMethod;
+    private final String[]mArgs;
+    public MethodAndArgsCaller(Method method,String[]args){
+        mMethod =method;
+        mArgs =args;
+    }
+    public void run(){
+        try {
+            mMethod.invoke(null,new Object[]{mArgs });//1
+        }catch(IllegalAccessException ex){
+            throw new RuntimeException(ex);
+        }
+        ···
+    }
+}
+```
+
+注释1处的mMethod指的就是ActivityThread的main方法，调用了mMethod的invoke方法后，ActivityThread的main方法就会被动态调用，应用程序进程就进入了ActivityThread的main方法中。讲到这里，应用程序进程就创建完成了并且运行了主线程的管理类ActivityThread。
+
+
+
+### Binder线程池启动过程
+
+在3.2.2节中学习了Zygote接收请求并创建应用程序进程，其中在应用程序进程创建过程中会启动Binder线程池，我们来查看ZygoteInit类的zygoteInit方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static final void zygoteInit(int targetSdkVersion,String[]argv,
+		ClassLoader classLoader) throws Zygote.MethodAndArgsCaller {
+    if(RuntimeInit.DEBUG) {
+        Slog.d(RuntimeInit.TAG,"RuntimeInit:Starting application from zygote");
+    }
+    Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,"ZygoteInit");
+    RuntimeInit.redirectLogStreams();
+    RuntimeInit.commonInit();
+    ZygoteInit.nativeZygoteInit();//1
+    RuntimeInit.applicationInit(targetSdkVersion,argv,classLoader);
+}
+```
+
+在注释1处会在新创建的应用程序进程中创建Binder线程池，下面来查看nativeZygoteInit方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+private static final native void nativeZygoteInit();
+```
+
+很明显nativeZygoteInit是一个JNI方法，它对应的函数是什么呢？在AndroidRuntime.cpp的JNINativeMethod数组中得知它对应的函数是com_android_internal_os_ZygoteInit_nativeZygoteInit：
+
+framworks/base/core/jni/AndroidRuntime.cpp
+
+```cpp
+const JNINativeMethod methodsp[] = {
+    { "nativeZygoteInit", "(V)", 
+    	(void*) com_android_internal_os_ZygoteInit_nativeZygoteInit},
+};
+```
+
+接下来来查看com_android_internal_os_ZygoteInit_nativeZygoteInit函数：
+
+frameworks/base/core/jni/AndroidRuntime.cpp
+
+```cpp
+static void com_android_internal_os_ZygoteInit_nativeZygoteInit(JNIEnv* env, jobject clazz)
+{
+    gCurRuntime -> onZygoteInit();
+}
+```
+
+gCurRuntime是AndroidRuntime类型的指针，它是在AndroidRuntime初始化时就创建的：
+
+frameworks/base/core/jni/AndroidRuntime.cpp
+
+```cpp
+···
+static AndroidRuntime* gCurRuntime = NULL;
+···
+AndroidRuntime::AndroidRuntime(char* argBlockStart, const size_t argBlockLength) : 
+	mExitWithoutCleanup(false),
+	mArgBlockStart(argBlockStart),
+	mArgBlockLength(argBlockLength)
+{
+    ···
+    gCurRuntime = this;
+}
+```
+
+AppRuntime继承自AndroidRuntime，AppRuntime创建时就会调用AndroidRuntime的构造函数，gCurRuntime就会被初始化，它指向的是AppRuntime，我们来查看AppRuntime的onZygoteInit函数，AppRuntime在app_main.cpp中实现：
+
+frameworks/base/cmds/app_process/app_main.cpp
+
+```cpp
+virtual void onZygoteInit()
+{
+    sp<ProcessState> proc = ProcessState::self();
+    ALOGV("App process: starting thread pool.\n");
+    proc -> startThreadPool();
+}
+```
+
+最后一行会调用ProcessState的startThreadPool函数来启动Binder线程池：
+
+frameworks/native/libs/binder/ProcessState.cpp
+
+```cpp
+void ProcessState::startThreadPool()
+{
+    AutoMutex _l(mLock);
+    if (!mThreadPoolStarted) {//1
+        mThreadPoolStarted = true;//2
+        spawnPooledThread(true);
+    }
+}
+```
+
+支持Binder通信的进程中都有一个ProcessState类，它里面有一个mThreadPoolStated变量，用来表示Binder线程池是否已经被启动过，默认值为false。在每次调用startThreadPool函数时都会在注释1处先检查这个标记，从而确保Binder线程池只会被启动一次。如果Binder线程池未被启动，则在注释2处设置mThreadPoolStarted为true，并调用spawnPooledThread函数来创建线程池中的第一个线程，也就是线程池的主线程：
+
+frameworks/native/libs/binder/ProcessState.cpp
+
+```cpp
+void ProcessState::spawnPooledThread(bool isMain)
+{
+    if (mThreadPoolStarted) {
+        String8 name = makeBinderThreadName();
+        ALOGV("Spawning new pooled thread, name=%s\n", name.string());
+        sp<Thread> t = new PoolThread(isMain);
+        t->run(name.string());//1
+    }
+}
+```
+
+可以看到Binder线程为一个PoolThread。在注释1处调用PoolThread的run函数启动一个新的线程。下面来看PoolThread类：
+
+frameworks/native/libs/binder/ProcessState.cpp
+
+```cpp
+class PoolThread : public Thread
+{
+··
+protected:
+	virtual bool threadLoop()
+    {
+        IPCThreadState::self()->joinThreadPool(mIsMain);//1
+        return false;
+    }
+    const bool mIsMain;
+}
+```
+
+PoolThread类继承了Thread类。在注释1处调用IPCThreadState的joinThreadPool函数，将当前线程注册到Binder驱动程序中，这样我们创建的线程就加入了Binder线程池中，新创建的应用程序进程就支持Binder进程间通信了，我们只需要创建当前进程的Binder对象，并将它注册到ServiceManager中就可以实现Binder进程间通信，而不必关心进程间是如何通过Binder进行通信的。
 
