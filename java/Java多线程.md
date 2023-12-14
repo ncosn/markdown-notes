@@ -568,11 +568,11 @@ public ThreadPoolExecutor(int corePoolSize,
 
 ```java
 public static ExecutorService newFixedThreadPool(int nThreads) {
-    return new ThreadPoolExecutor(nThreads, nThreads, OL, TimeUnit.MILLISECONDS, new LikedBlockingQueue<Runnable>());
+    return new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LikedBlockingQueue<Runnable>());
 }
 ```
 
-FixedThreadPool的corePoolSize和maximumPoolSize都设置为创建FixedThreadPool指定 的参数nThreads，也就意味这FixedThreadPool只有核心线程并且数量固定，没有非核心线程。keepAliveTime设置为OL意味着多余的线程会被立即终止。因为不会产生多余的线程，所以keepAliveTime是无效的参数。另外，任务队列采用无界阻塞队列LinkedBlockingQueue。FixedThreadPool的execute方法的执行示意图如下图所示。
+FixedThreadPool的corePoolSize和maximumPoolSize都设置为创建FixedThreadPool指定的参数nThreads，也就意味这FixedThreadPool只有核心线程并且数量固定，没有非核心线程。keepAliveTime设置为0L意味着多余的线程会被立即终止。因为不会产生多余的线程，所以keepAliveTime是无效的参数。另外，任务队列采用无界阻塞队列LinkedBlockingQueue。FixedThreadPool的execute方法的执行示意图如下图所示。
 
 > LinkedBlockingQueue是一个有界阻塞队列，但如果使用无参构造器则是一个无界的了
 
@@ -725,7 +725,7 @@ public final AsyncTask<Params,Progress,Result> executeOnExecutor(Executor exec, 
                 throw new IllegalStateException("Cannot execute task: the task has already been executed (a task can be executed only once)");
         }
     }
-    mStatus =  Status.RUNNING;
+    mStatus = Status.RUNNING;
     onPreExecute();
     mWorker.mParams = params;//1
     exec.execute(mFuture);

@@ -405,15 +405,13 @@ Windows平台上有一个注册表管理器，注册表的内容采用键值对�
 
 
 
-
-
 #### init进程启动总结
 
 init 程启动做了很多的工作，总的来说主要做了以下三件事：
 
-1. 创建和挂载启动所需的文件目录。
-2. 初始化和启动属性服务。
-3. 解析 init.rc 配置文件并启动 Zygote 进程。
+1. **创建和挂载启动所需的文件目录**。
+2. 初始化和启动**属性服务**。
+3. 解析 init.rc 配置文件并**启动 Zygote 进程**。
 
 
 
@@ -547,7 +545,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
 }
 ```
 
-注释1调用startVm函数来创建Java虚拟机，在注释2处调用startReg函数为Java虚拟机注册JNI方法。注释3处的className的值是传进来的参数，他的值为com.android.internal.os.ZygoteInit。在注释4处通过toSlashCalssName，将className的“.”替换为“/”，替换后的值为com/android/internal/os/ZygoteInit并赋值给slashClassName，接着在注释5处根据slashClassName找到Zygotelnit,找到了Zygotelnit后顺理成章地在注释6处找到Zygotelnit的main方法。最终会在注释7处通过JNI调用Zygotelnit的main方法。这里为何要使用JNI呢?因为Zygotelnit的main方法是由Java语言编写的，当前的运行逻辑在Native中，这就需要通过JNI来调用Java。这样Zygote就从Native层进入了Java框架层。
+注释1调用startVm函数来创建Java虚拟机，在注释2处调用startReg函数为Java虚拟机注册JNI方法。注释3处的className的值是传进来的参数，他的值为com.android.internal.os.ZygoteInit。在注释4处通过toSlashClassName，将className的“.”替换为“/”，替换后的值为com/android/internal/os/ZygoteInit并赋值给slashClassName，接着在注释5处根据slashClassName找到Zygotelnit,找到了Zygotelnit后顺理成章地在注释6处找到Zygotelnit的main方法。最终会在注释7处通过JNI调用Zygotelnit的main方法。这里为何要使用JNI呢?因为Zygotelnit的main方法是由Java语言编写的，当前的运行逻辑在Native中，这就需要通过JNI来调用Java。这样Zygote就从Native层进入了Java框架层。
 
 在我们通过JNI调用ZygoteInit的main方法后，Zygote便进入了Java框架层，此前是没有任何代码进入Java框架层的，换句话说是Zygote开创了Java框架层。该main方法代码如下：
 
@@ -639,7 +637,7 @@ void registerServerSocket(String socketName) {
 }
 ```
 
-在注释1处拼接Socket的名称,其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处将ullSocketName 转换为环境变量的值，再在注释 3处转换为文件描述符的参数。在注释 4 处创建文件描述符，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处创建 LocalServerSocket，也就是服务器端的 Socket,并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
+在注释1处拼接Socket的名称,其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处将fullSocketName 转换为环境变量的值，再在注释 3处转换为文件描述符的参数。在注释 4 处创建文件描述符，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处创建 LocalServerSocket，也就是服务器端的 Socket,并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
 
 **2、启动SystemServer进程**
 
@@ -2088,7 +2086,7 @@ void ProcessState::startThreadPool()
 }
 ```
 
-支持Binder通信的进程中都有一个ProcessState类，它里面有一个mThreadPoolStated变量，用来表示Binder线程池是否已经被启动过，默认值为false。在每次调用startThreadPool函数时都会在注释1处先检查这个标记，从而确保Binder线程池只会被启动一次。如果Binder线程池未被启动，则在注释2处设置mThreadPoolStarted为true，并调用spawnPooledThread函数来创建线程池中的第一个线程，也就是线程池的主线程：
+**支持Binder通信的进程中都有一个ProcessState类**，它里面有一个mThreadPoolStated变量，用来表示Binder线程池是否已经被启动过，默认值为false。在每次调用startThreadPool函数时都会在注释1处先检查这个标记，从而确保Binder线程池只会被启动一次。如果Binder线程池未被启动，则在注释2处设置mThreadPoolStarted为true，并调用spawnPooledThread函数来创建线程池中的第一个线程，也就是线程池的主线程：
 
 frameworks/native/libs/binder/ProcessState.cpp
 
@@ -2122,5 +2120,92 @@ protected:
 }
 ```
 
-PoolThread类继承了Thread类。在注释1处调用IPCThreadState的joinThreadPool函数，将当前线程注册到Binder驱动程序中，这样我们创建的线程就加入了Binder线程池中，新创建的应用程序进程就支持Binder进程间通信了，我们只需要创建当前进程的Binder对象，并将它注册到ServiceManager中就可以实现Binder进程间通信，而不必关心进程间是如何通过Binder进行通信的。
+PoolThread类继承了Thread类。在注释1处调用IPCThreadState的joinThreadPool函数，将当前线程注册到Binder驱动程序中，这样我们创建的线程就加入了Binder线程池中，新创建的应用程序进程就支持Binder进程间通信了，我们**只需要创建当前进程的Binder对象，并将它注册到ServiceManager中就可以实现Binder进程间通信**，而不必关心进程间是如何通过Binder进行通信的。
+
+
+
+### 消息循环创建过程
+
+Zygote接收请求并创建应用程序进程，应用程序进程启动后会创建消息循环。我们回到RuntimeInit的invokeStaticMain方法：
+
+frameworks/base/core/java/com/android/internal/os/RuntimeInit.java
+
+```java
+private static void invokeStaticMain(String className, String[]argv, ClassLoaderclassLoader) throws Zygote.MethodAndArgsCaller {
+    Class<?> cl;
+    ···
+    throw new Zygote.MethodAndArgsCaller(m,argv);//3
+}
+```
+
+invokeStaticMain方法已经在3.2讲过，这里主要看最后一行，会抛出一个MethodAndArgsCaller异常，这个异常会被ZygoteInit的main方法捕获：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static void main(String argv[]) {
+    ···
+    try {
+        ···
+    } catch (MethodAndArgsCaller caller) {
+        caller.run();//1
+    } catch (RuntimeException ex) {
+        Log.e(TAG, "Zygote died with exception", ex);
+        closeServerSocket();
+        throw ex;
+    }  
+}
+```
+
+在注释1处捕获到MethodAndArgsCaller时会执行caller的run方法：
+
+frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
+
+```java
+public static class MethodAndArgsCaller extends Exception implements Runnable {
+    private final Method mMethod;
+    private final String[] mArgs;
+    public MethodAndArgsCaller(Method method, String[] args) {
+        mMethod = method;
+        mArgs = args;
+    }
+    public void run() {
+        try {
+            mMethod.invoke(null, new Object[] {mArgs});//1
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
+        ···
+        	throw new RuntimeException(ex);
+    	}
+    }
+}
+```
+
+在3.2.2节我们得知，mMethod指的就是ActivityThread的main方法，mArgs指的是应用程序进程的启动参数。在注释1处调用ActivityThread的main方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+public static void main(String[] args) {
+    ···
+    // 创建主线程Looper
+    Looper.prepareMainLooper();//1
+    ActivityThread thread = new ActivityThread();//2
+    thread.attach(false);
+    if (sMainThreadHandler == null) {//3
+        // 创建主线程H类
+        sMainThreadHandler = thread.getHandler();//4
+    }
+    if (false) {
+        Looper.myLooper().setMessageLogging(new LogPrinter(Log.DEBUG,"ActivityThread"));
+    }
+    Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+    // Looper开始工作
+    Looper.loop();//5
+    throw new RuntimeException("Main thread loop unexpectedly exited");
+}
+```
+
+ActivityThread类用于管理当前应用程序的主线程，在注释1处创建主线程的消息循环Looper，在注释2处创建ActivityThread。在注释3处判断Handler类型的sMainThreadHandler是否为null，如果为null则在注释4处获取H类并赋值给sMainThreadHandler，这个H类继承自Handler，是ActivityThread的内部类，用于处理主线程的消息循环，在第4章、第5章我们将会经常提到它。在注释5处调用Looper的loop方法，使得Looper开始处理消息。可以看出，系统在应用程序进程启动完成后，就会创建一个消息循环，这样运行在应用程序进程中的应用程序可以方便地使用消息处理机制。
 
