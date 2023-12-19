@@ -637,7 +637,7 @@ void registerServerSocket(String socketName) {
 }
 ```
 
-在注释1处拼接Socket的名称,其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处将fullSocketName 转换为环境变量的值，再在注释 3处转换为文件描述符的参数。在注释 4 处创建文件描述符，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处创建 LocalServerSocket，也就是服务器端的 Socket,并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
+在注释1处拼接Socket的名称，其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处将fullSocketName 转换为环境变量的值，再在注释 3处转换为文件描述符的参数。在注释 4 处创建文件描述符，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处创建 LocalServerSocket，也就是服务器端的 Socket,并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
 
 **2、启动SystemServer进程**
 
@@ -746,6 +746,8 @@ void runSelectLoop(String abiList) throws Zygote.MethodAndArgsCaller {
 3. 通过JNI调用ZygoteInit的main函数进入Zygote的Java框架层
 4. 通过registerZygoteSocket方法创建服务器端Socket，并通过runSelectLoop方法等待AMS的请求来创建新的应用程序进程
 5. 启动SystemServer进程
+
+
 
 ### SystemServer处理过程
 
