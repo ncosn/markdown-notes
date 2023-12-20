@@ -577,7 +577,7 @@ target(hello : 'say hello target') {
 setDefaultTarget(hello)
 ```
 
-##### Apache Maven
+##### 4、Apache Maven
 
 Maven于2004年发布，它的目标是改进开发人员在使用Ant时面临的一些问题。Maven最初是为了简化Jakarta Turbine项目的构建的，他经历了从Maven到Maven3的发展，Maven作为后来者，继承了Ant的项目构建功能，同样采用了XML作为构建脚本的格式。Maven具有依赖管理和项目管理的功能，并提供了中央仓库，能够帮助我们自动下载库文件。
 
@@ -625,4 +625,56 @@ Maven也有一下缺点：
 （4）国内连接Maven的中央仓库比较慢，需要连接国内的Maven镜像仓库
 
 （5）Maven缺乏相关的技术文档，不便于使用和理解
+
+
+
+#### Gradle的特性
+
+Gradle基于JVM，是一款专注于灵活性和性能的开源构建工具，它的特性包含了：
+
+<img src="./Gradle.assets/image-20231220094421702.png" alt="image-20231220094421702" style="zoom: 50%;" />
+
+从图8-2可以看出，Gradle结合Ant和Maven等构建工具的最佳特性。它有约定优于配置的方法、强大的依赖管理，它的构建脚本使用Groovy或Kotlin编写，Gradle是Android的官方构建工具。Gradle的构建脚本的样式如下所示：
+
+build.gradle
+
+```groovy
+apply plugin:'java'
+group='com.mycompany.app'
+archivesBaseName='my-app'
+version='1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral{}
+}
+
+dependencies {
+    testCompile 'junit:4.11'
+}
+```
+
+这个build.gradle等同于此前Maven的pom.xml。由此可以看出Groovy编写构建脚本代码量更少，可读性更强。
+
+下面列出Gradle与竞争对手不同的特性。
+
+1. 轻松的可拓展性
+   Gradle有非常良好的拓展性。如果我们想要在多个构建或者项目中分享可重用代码，Gradle的插件会帮助我们实现。将Gradle插件应用在项目中，它会在项目构建过程中提供很多帮助：为我们添加项目的依赖的第三方库、添加有用的默认设置的约定（源码位置、单元测试代码位置）。其中AndroidGradle插件继承Java插件，在本章8.5节会介绍插件的内容。
+
+2. 采用了Groovy
+
+   Ant和Maven的构建脚本是由XML来编写的，如果XML逻辑复杂且内容太多就不容易维护。Gradle可以使用Groovy来构建脚本，Groovy是一种基于JVM的动态语言，它的语法和Java非常相似并兼容Java，因此我们不用担心学习Groovy
+
+3. 强大的依赖管理
+
+   Gradle提供了可配置的、可靠的依赖管理方案。一旦依赖的库被下载并存储到本地缓存中，我们的项目就可以使用了。依赖管理很好地实现了在不同的平台和机器上产生相同的构建结果。
+
+4. 灵活的约定
+
+   Gradle可以为构建项目提供引导和默认值，如果使用这种约定，那么Gradle构建脚本代码量比较少。相比Ant、Gradle不仅提供了约定，还可以轻松打破约定。
+
+5. Gradle Wrapper
+
+   Gradle Wrapper是对Gradle的包装，它的作用是简化Gradle本身的下载、安装和构建，比如它会在我们没有安装Gradle的情况下，去下载指定版本的Gradle并进行构建。Gradle的版本很多，所以有可能出现版本兼容的问题，去下载指定版本的Gradle并进行构建。Gradle的版本很多，所以有可能出现版本兼容的问题，这就需要Gradle Wrapper去统一Gradle的版本，避开开发团队因为Gradle版本不一致而产生的问题。
+
+6. 
 
