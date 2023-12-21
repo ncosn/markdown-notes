@@ -481,7 +481,7 @@ println p.name
 
 ## Gradle核心
 
-### Gradle概述
+### 8.1 Gradle概述
 
 #### 项目自动化
 
@@ -676,5 +676,580 @@ dependencies {
 
    Gradle Wrapper是对Gradle的包装，它的作用是简化Gradle本身的下载、安装和构建，比如它会在我们没有安装Gradle的情况下，去下载指定版本的Gradle并进行构建。Gradle的版本很多，所以有可能出现版本兼容的问题，去下载指定版本的Gradle并进行构建。Gradle的版本很多，所以有可能出现版本兼容的问题，这就需要Gradle Wrapper去统一Gradle的版本，避开开发团队因为Gradle版本不一致而产生的问题。
 
-6. 
+6. 可以和其他构建工具集成
 
+   Gradle可以和Ant、Maven和Ivy进行集成，比如我们可以把Ant的构建脚本导入Gradle的构建中。
+
+7. 底层API
+
+   Gradle显然无法满足所有企业级构建的要求，但是可以通过Hook Gradle的生命周期来监控和配置构建脚本。
+
+8. 社区的支持和推动
+
+   Gradle是一个开源的项目，它遵循了Apache License 2.0协议。Gradle的优良特性吸引了很多开发者并形成了Gradle社区，很多开源软件的开发者为Gradle的核心代码做出了共享。
+
+
+
+### 8.2 Gradle基础知识
+
+本节继续学习Gradle入门需要掌握的基础知识，包括配置环境、实现Hello World、Gradle的任务、Gradle日志和Gradle命令行，掌握这些能够更好地理解Gradle。
+
+#### 配置Gradle环境
+
+安装Gradle前要确保系统已经配置好JDK的环境，要求JDK的版本在1.7或更高的版本。
+
+Gradle的安装有以下两种形式。
+
+（1）通过包管理安装，比如Windows平台的Chocolatey和Scoop，macOS平台的MacPortsl和Homebrew等。
+
+（2）手动安装。见《Android进阶指北》P255
+
+#### 实现Hello World
+
+配置完成Gradle环境后，按照惯例要实现Gradle的Hello World，这里以Windows平台为例。
+
+build.gradle为Gralde默认的构建脚本文件，运行Gradle命令时，会从当前目录下寻找build.gradle文件来执行构建。
+
+我们首先新建一个目录，比如D:\Android\gradle_demo，在这个目录中新建一个build.gradle文件，输入以下内容：
+
+```groovy
+task hello {
+    doLast {
+        println 'Hello world!'
+    }
+}
+```
+
+然后在该文件的所在目录下运行gradle -q hello构建脚本，就会在控制台打印出'Hello World!'。
+
+项目构建比较复杂，为了使用各种开发语言的开发者都能够快速构建项目，专家们开发出了Gradle这个基于Groovy的DSL(Domain Specific Language)，DSL意为领域特定语言，只用于某个特定的领域。我们只要按照Groovy的DSL语法来写，就可以轻松构建项目了。
+
+task（任务）和action（动作）是Gradle的重要元素。上述代码中，task代表一个独立的原子性操作，比如复制一个文件，编译一次Java代码，这里我们简单地将其定义一个名为hello的任务。doLast代表task执行的最后一个action，通俗来讲就是task执行完毕后会回调doLast中的代码，在上面这个示例中就会打印'Hello world!'
+
+上面的示例还可以写的更简洁一些，操作符<<是doLast方法的快捷版本，他们有相同的作用：
+
+```groovy
+task hello << {
+    println 'Hello world!'
+}
+```
+
+#### 8.2.3 Gradle的任务
+
+为了讲解后面的Gradle命令行，这里简单介绍下Gradle的任务，包括创建任务、任务依赖、动态定义任务和任务的分组和描述。
+
+##### **1.创建任务**
+
+除了以上实现Hello World的示例采用的创建任务方式，还有以下3种创建任务方式。
+
+（1）直接用任务名称创建
+```groovy
+def Task hello = task{hello}
+hello.doLast{
+    println "hello world"
+}
+```
+
+（2）任务名称+任务配置创建
+
+```groovy
+def Task hello = task(hello,group:BasePlugin.BUILD_GROUP)
+hello.doLast {
+    println "hello world"
+}
+```
+
+其中group为任务配置项，它代表了分组。
+
+（3）TaskContainer的create方法创建
+
+```groovy
+tasks.create(name:'hello') << {
+    println "hello world"
+}
+```
+
+此前创建任务的方式最终都会调用tasks的create方法，其中tasks类型为TaskContainer。
+
+##### **2.任务依赖**
+
+任务依赖会决定任务运行的先后顺序，被依赖的任务会在定义依赖的任务以前执行。
+
+```groovy
+task hello << {
+    println 'Hello world!'
+}
+task go(dependsOn: hello) << {
+    println "go for it"
+}
+```
+
+在hello任务的基础上增加了一个名为go的任务，通过dependsOn来指定依赖的任务为hello，因此go任务在hello之后运行。
+
+运行gradle -q go构建脚本，打印结果如下：
+
+```
+Hello world!
+go for it
+```
+
+##### **3.动态定义任务**
+
+动态定义任务指的是在运行时来定义任务的名称：
+
+```groovy
+3.times { number ->
+    task "task$number" << {
+        println "task $number"
+    }
+}
+```
+
+这里用到了Groovy语法，times是Groovy在java.lang.Number中拓展的方法，是一个定时器。3.times中循环创建了三个新任务，隐式变量number的值为0、1、2，任务的名称由task加上number的值组成，达到了动态定义任务的目的。
+
+运行gradle -q task0构建脚本，打印结果如下。
+
+```
+task 0
+```
+
+##### **4.任务的分组和描述**
+
+Gradle有任务组的概念，可以为任务配置分组和描述，以便于管理任务，拥有良好的可读性。改造上述示例，为hello任务添加分组和描述：
+
+```groovy
+task hello {
+    group = 'build'
+    description = 'hello world'
+    doLast {
+        println "任务分组；${group}"
+        println "任务描述：${description}"
+    }
+}
+
+task go(dependsOn: hello) << {
+    println "go for it"
+}
+```
+
+也可以采用之前其他的创建任务方式来为任务添加分组和描述：
+
+```groovy
+def Task hello = task{hello}
+hello.description = 'hello world'
+hello.group = BasePlugin.BUILD_GROUP
+hello.doLast {
+    println "任务分组：${group}"
+    println "任务描述：${description}"
+}
+task go(dependsOn: hello) << {
+    println "go for it"
+}
+```
+
+
+
+#### Gradle日志级别
+
+和Andorid一样，Gradle也定义了日志级别，如表所示：
+
+| 级别      | 用于       |
+| --------- | ---------- |
+| ERROR     | 错误消息   |
+| QUIET     | 重要的消息 |
+| WARNING   | 警告消息   |
+| LIFECYCLE | 进度消息   |
+| INFO      | 信息性消息 |
+| DEBUG     | 调试消息   |
+
+前面章节我们通过`gradle -q +任务名称`来运行一个指定的task，这个q是命令行开关选项，通过开关选项可以控制输出的日志级别：
+
+| 开关选项        | 输出日志级别        |
+| --------------- | ------------------- |
+| 无日志选项      | LIFECYCLE及更高级别 |
+| -q 或者 --quiet | QUIET及更高级别     |
+| -i 或者 --info  | INFO及更高级别      |
+| -d 或者 --debug | DEBUG及更高级别     |
+
+
+
+#### Gradle命令行
+
+从命令行角度来看，Gradle和Git类似，命令都可以用一些IDE或图形工具来代替，但是如果我们对Gradle命令行熟悉，会帮助我们更好地理解Gradle，高效地运用Gradle。
+
+##### **1.获取所有任务信息**
+
+本节的命令行以8.2.3节的代码为例，此前我们通过`gradle -q +任务名称`来运行一个指定的任务，如果不知道任务名称，则可以通过运行`gradle -q tasks`命令来获取所有任务信息，这样就不需要打开源码了：
+
+```
+Build tasks
+-----------
+hello-helloworld
+
+Build Setup tasks
+-----------------
+init - Initializesanew Gradle build.
+wrapper - Generates Gradle wrapper files.
+
+Help tasks
+----------
+buildEnvironment - Displays all buildscript dependencies declared in root project'gradle demo'.
+components - Displays the components produced by root project 'gradle demo'.[incubatingldependencies - Displays all dependencies declared in root project 'gradle demo'.
+
+dependencyInsight - Displays the insight into a specific dependency in root proiectigradle demo'.
+dependentComponents - Displays the dependent components of components in root project gradle demo'.[incubating]
+help - Displays a help message.
+model - Displays the configuration model of root project 'gradle demo',[incubating]
+projects - Displays the sub-projects of root project 'gradle demo'.
+properties - Displays the properties of root project 'gradle demo'.
+tasks - Displays the tasks runnable from root project 'gradle demo'.
+
+To see all tasks and more detail,run gradle tasks--all
+To see more detail about a task,run gradle help --task <task>
+```
+
+在默认情况下，只会显示那些被分组的任务和描述。比如Build tasks（Build任务组）中有我们定义的hello任务，Build Setup tasks中有init和wrapper，Help tasks中有buildEnvironment和components等。
+
+##### **2.排除任务**
+
+如果我们不想运行go任务，则可以运行`gradle hello -x go`命令，如下所示：
+
+```
+> Task : hello
+任务分组：build
+任务描述：hello world
+
+Deprecated Gradle feature were used in this build, making it incompatible with Gradle 5.0.
+Use '--warning-mode all' to show the individual deprecation warnings.
+See https://docs.gradle……
+mand_line_warnings
+
+BUILD SUCCESSFUL in 2s
+1 actionable task: 1 executed
+```
+
+由上述代码可以看出，并没有运行go任务。
+
+##### **3.获取任务帮助信息**
+
+通过运行`gradle -q help --task hello`命令来显示hello任务的帮助信息：
+
+```
+Detailed task information for hello
+
+Path
+	:hello
+	
+Type
+	Task (org.gradle.api.Task)
+	
+Description
+	hello world
+	
+Group
+	build
+```
+
+由上述代码可以看到hello任务的路径、类型、描述和分组。
+
+##### **4.多任务调用**
+
+如果想要多任务调用，则可以使用如下代码。
+
+```groovy
+task helloWorld << {
+    println 'Hello world!'
+}
+task goForit << {
+    println "go for it"
+}
+```
+
+通过命令行一次执行多个任务，每个任务通常只会执行一次，无论是在命令行中指定任务还是任务依赖，上面的示例中，我们在运行gradle helloWorld goFoit时，会先执行helloWorld任务后再执行goForit任务。
+
+##### **5.任务名称缩写**
+
+可以对使用驼峰命名的任务进行缩写，对于名称特别长的任务，这个特性非常有用，比如多任务调用中的示例只需要执行`gradle hW gF`就可以了，不过需要注意的是，任务名称的缩写必须是唯一的，如果多任务调用示例中第二个任务的名称helloWangshu，那么就会报错。
+
+
+
+### 8.3 被忽视的Gradle Wrapper
+
+我们已经学习了为什么要用Gradle、Gradle的基础、Groovy的基础，这一节我们接着学习Gradle Wrapper。了解Gradle Wrapper可以更好地理解Gradle，GradleWrapper在日常开发中看似“不起眼”，实则非常重要。
+
+#### 为什么需要Gradle Wrapper
+
+Gradle Wrapper被称为Gradle包装器，是对Gradle的一层包装。为什么需要Gradle Wrapper？比如在一个开发团队中，如果没进来一个成员都需要在计算机中安装Gradle，那么这是运行Gradle的环境和版本就会给构建结果带来不确定性。针对这个问题，Gradle提供了一个解决方案，即Gradle Wrapper，它是一个脚本，可以在计算机没有安装Gradle的情况下运行Gradle构建，并且能够指定Gradle的版本，开发人员可以快速启动并运行Gradle项目，而不必手动安装，这样就标准化了项目，从而提高了开发效率。Android Studio在新建项目时会自带Gradle Wrapper，这也是我们很少单独去下载安装Gradle的原因。Gradle Wrapper的工作流程如图：
+
+<img src="./Gradle.assets/image-20231221150352104.png" alt="image-20231221150352104" style="zoom: 50%;" />
+
+当使用Gradle Wrapper启动Gradle时，如果指定版本的Gradle没有被下载关联，那么会先从Gradle官方仓库将该版本的Gradle下载到用户本地，进行解包并执行批处理文件。后续的构建运行都会重用这个解包的运行时安装程序。
+
+#### 构建Gradle Wrapper
+
+首先要确保计算机中配置了Gradle的环境，Gradle已经内置了Wrapper Task，执行Wrapper Task就可以在项目目录中生成Gradle Wrapper的目录文件。在项目根目录中执行gradle wrapper就可以了：
+
+```shell
+$ gradle wrapper
+> Task:wrapper
+
+BUILD SUCCESSFUL in 0s
+1 actionable task: 1 executed
+```
+
+这时会在项目根目录中生成如下文件：
+
+```
+|————gradle
+|    |————wrapper
+|       |————gradle-wrapper.jar
+|       |————gradle-wrapper.properties
+|————gradlew
+|————gradlew.bat
+```
+
+每个文件的含义如下。
+
++ gradle-wrapper.jar：包含Gradle运行时的逻辑代码
++ gradle-wrapper.properties：负责配置包装器运行时行为的属性文件，用来配置使用哪个版本的Gradle等属性。
++ gradlew：在Linux平台下，用于执行Gradle命令的包装器脚本。
++ gradlew.bat：在Windows平台下，用于执行Gradle命令的包装器脚本。
+
+当生成了这些目录与文件后，用户就可以将工程push到远程，当其他用户clone下来后就可以直接进行项目的构建，节省了用户单独下载Gradle的时间，并且可以确保Gradle版本的一致。
+
+也可以用gradle命令行选项来生成gradle wrapper。
+
+--gradle-version：用于下载和执行指定的gradle版本。
+
+--distribution-type：指定下载Gradle发行版的类型，可用选项有bin和all，默认值是bin，-bin发行版只包含运行时，但不包含源码和文档。
+
+--gradle-distribution-url：指定下载Gradle发行版的完整URL地址。
+
+--gradle-distribution-sha256-sum：使用的SHA 256散列和验证下载的Gradle的发行版。
+
+比如使用命令行：gradle wrapper --gradle-version 4.2.1 --distribution-type all，就可以生成版本为4.2.1的包装器，并使用-all发行版。
+
+
+
+#### 配置的Gradle Wrapper
+
+gradle-wrapper.properties是Gradle Wrapper的属性文件，用来配置Gradle Wrapper，Gradle 4.2.1版本对应的gradle-wrapper.properties如下所示：
+
+```groovy
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+distributionUrl=https\://services.gradle……
+```
+
+字段含义如下：
+
++ distributionBase：Gradle解包后存储的主目录。
++ distributionPath：distributionBase指定目录的子目录。distributionBase+distributionPath就是Gradle解包后的存放位置。
++ distributionUrl：Gradle发行版压缩包的下载地址。
++ zipStoreBase：Gradle压缩包存储主目录。
++ zipStorePath：zipStore指定目录的子目录。zipStoreBase+zipStorePath就是Gradle压缩包的存放位置。
+
+这里我们需要关注的是distributionUrl字段，如果官方的地址下载不了或者下载缓慢，则可以将这个地址换为其他镜像地址，或者把Gradle发行版压缩包放在服务器上以供下载。
+
+
+
+#### 使用Gradle Wrapper
+
+使用Gradle Wrapper不是用Gradle命令，而是用gradlew和gradlew.bat脚本。在build.gradle中加入如下语句。
+
+```groovy
+task.test {
+    doLast {
+        println 'Hello world!'
+    }
+}
+```
+
+以Windows平台为例，我们进入项目所在的根目录执行`gradlew.bat test`。
+
+```shell
+f:\app>gradlew.bat test
+Downloading https://services.gradle……
+·································································
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Task: test
+Hello world!
+```
+
+如果计算机中没有Gradle发行版，则Gradle包装器会将Gradle发行版压缩包下载到本地中进行解压，比如计算机中的存储路径为：C:\Users\52501.gradle\wrapper\dists\gradle-4.2.1-bin\dajvke9o8kmaxbu0kc5gcgeju\gradle-4.2.1。
+
+如果此后Gradle属性文件的distributionUrl属性不变，就会一致使用本地的Gradle发行版。如果我们再次执行`gradlew.bat test`，就会和调用Gradle命令一样。
+
+```shell
+f:\app>gradlew.bat test
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Task: test
+Hello world!
+```
+
+
+
+#### 升级Gradle Wrapper
+
+升级Gradle Wrapper有两种方式，第一种方式是设置Gradle属性文件的distributionUrl属性，第二种方式是运行wrapper任务，推荐使用第二种方式。当前本地的Gradle版本为4.2.1，如果想升级为5.1.1，则只需要运行gradlew wrapper --gradle-version 5.1.1命令即可。
+
+```shell
+f:\app>gradlew wrapper --gradle-version 5.1.1
+
+BUILD SUCCESSFUL in 1s
+1 actionable task: 1 executed
+```
+
+运行gradlew -v命令来检查Gradle的版本
+
+```
+
+```
+
+由于本地的版本不是Gradle 5.1.1，那么会将下载下来的Gradle压缩包存储起来并进行解包，具体内容见上述打印日志。
+
+
+
+#### 自定义Gradle Wrapper
+
+Gradle已经内置了Wrapper Task，因此构建Gradle Wrapper会生成Gradle Wrapper的属性文件，这个属性文件可以通过自定义Wrapper Task来设置。比如我们想要将下载的Gradle版本修改为4.2.1，可以设置成如下形式。
+
+```groovy
+task wrapper(type:Wrapper) {
+    gradleVersion = '4.2.1'
+    distributionUrl = '../../gradle-4.2.1-bin.zip'
+    distributionPath = wrapper/dists
+}
+```
+
+distributionUrl属性可以设置为本地的项目目录，也可以设置为网络地址。
+
+
+
+### 8.4 Gradle插件基础
+
+#### Gradle插件概述
+
+提到Gradle插件之前，我们首先了解什么是插件。在《Android进阶解密》中（第15章插件化原理），讲解了插件化的原理，并讲解了什么是插件。
+
+Gradle本身和初始的机器人一样，知识提供了基本的核心功能，其它特性比如编译Java源码的能力、编译Android工程的能力等就需要通过插件来实现了。这里主要讲的是Gradle插件，而不是Android Gradle插件。
+
+#### 应用Gradle插件
+
+应用Gradle插件主要有两个步骤，第一步是解析插件，第二步是把插件应用到项目中，应用插件通过Project.apply方法来完成。
+
+在Gradle中一般有两种类型的插件，分别为脚本插件和对象插件。脚本插件是额外的构建脚本，它会进一步配置构建，可以把它理解为一个普通的build.gradle。对象插件又叫二进制插件，是实现了Plugin接口的类，下面分别介绍如何使用脚本插件和对象插件。
+
+##### 脚本插件
+
+在8.3节示例的基础上定义一个other.gradle，该示例的脚本目录结构如图：
+
+<img src="./Gradle.assets/image-20231221165102853.png" alt="image-20231221165102853" style="zoom:50%;" />
+
+other.gradle的代码如下所示：
+
+```groovy
+ext {
+    version='1.0'
+    url = 'http://liuwangshu……'
+}
+```
+
+这实际上不算是一个真正的脚本插件，就是一个简单的脚本插件，主要是用于演示脚本插件是如何被应用的。我们在build.gradle中应用这个脚本插件，如下所示：
+
+build.gradle
+
+```groovy
+apply from: 'other.gradle'
+task test {
+    doLast {
+        println "版本为：${version},地址为：${url}"
+    }
+}
+```
+
+apply是Gradle project中提供的方法，用于配置项目中的插件。执行`gradlew.bat test`，会打印出想要的结果。
+
+##### 对象插件
+
+我们知道对象插件就是实现了`org.gradle.api.plugins<Project>`接口的插件，对象插件可以分为内部插件和第三方插件。
+
+**1.内部插件**
+
+如果我们想要应用Java插件可以这样写。
+
+build.gradle
+
+```groovy
+apply plugin:org.gradle.api.plugins.JavaPlugin
+```
+
+Gradle默认导入了`org.gradle.api.plugins`包，因此我们也可以去掉包名。
+
+```groovy
+apply plugin:JavaPlugin
+```
+
+实现了`org.gradle.api.plugins`接口的插件还有pulginid，使用pulginid是十分简洁且常用的方式：
+
+```groovy
+apply plugin:'java'
+```
+
+Gradle的发行包中有大量的插件，这些插件有很多类型，比如语言插件、集成插件、软件开发插件等，如果我们向项目添加C++源码编译功能，那么可以这样写。
+
+```groovy
+apply plugin:'cpp'
+```
+
+**2.第三方插件**
+
+第三方的对象插件通常是jar文件，要想让构建脚本知道第三方插件的存在，需要使用buildscript来设置依赖。
+
+```groovy
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle……"
+        }
+    }
+    dependencies {
+        classpath "com.jfrog.bintray.gradle:gradle-bintary-plugin:1.8.4"
+    }
+}
+apply plugin: "com.android.application"
+```
+
+这样我们就可以使用Android Gradle插件通过apply方法来使用App工程插件，这样项目会编译成为一个APK，这里设计了Android相关的知识，脱离了本章的讨论范围，具体内容请见后续章节。
+
+
+
+#### 插件DSL
+
+Gradle的特性有四种状态，分别是Internal、Incubating、Public、Deprecated，插件DSL属于Incubating状态（即孵化状态）。这也导致插件DSL的特性在将来的Gradle版本中可能会发生变化，直到它不在孵化为止。
+
+使用Java插件可以这样写。
+
+build.gradle
+
+```groovy
+plugins {
+    id 'java'
+}
+```
+
+这种代码很简洁，当然这是使用内部插件，如果外部插件被托管在gradle plugin上，那么也可以这样写。
+
+build.gradle
+
+```groovy
+plugins {
+    id "com.jfrog.bintray" version "1.8.4"
+}
+```
+
+这样就不需要配置buildscript了，直接配置plugins来使用插件。
