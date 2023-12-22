@@ -734,6 +734,8 @@ task hello << {
 }
 ```
 
+> 注意：操作符 `<<` 在Gradle 4.x 中被弃用（deprecated），并且在Gradle 5.0 被移除（removed）
+
 #### 8.2.3 Gradle的任务
 
 为了讲解后面的Gradle命令行，这里简单介绍下Gradle的任务，包括创建任务、任务依赖、动态定义任务和任务的分组和描述。
@@ -744,7 +746,7 @@ task hello << {
 
 （1）直接用任务名称创建
 ```groovy
-def Task hello = task{hello}
+def Task hello = task(hello)
 hello.doLast{
     println "hello world"
 }
@@ -835,7 +837,7 @@ task go(dependsOn: hello) << {
 也可以采用之前其他的创建任务方式来为任务添加分组和描述：
 
 ```groovy
-def Task hello = task{hello}
+def Task hello = task(hello)
 hello.description = 'hello world'
 hello.group = BasePlugin.BUILD_GROUP
 hello.doLast {
@@ -1067,7 +1069,7 @@ task.test {
 }
 ```
 
-以Windows平台为例，我们进入项目所在的根目录执行`gradlew.bat test`。
+以Windows平台为例，我们进入项目所在的根目录执行`gradlew test`。
 
 ```shell
 f:\app>gradlew.bat test
@@ -1078,6 +1080,8 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task: test
 Hello world!
 ```
+
+> 可将gradle-wrapper.properties中的distributionUrl改为本地的Gradle压缩包
 
 如果计算机中没有Gradle发行版，则Gradle包装器会将Gradle发行版压缩包下载到本地中进行解压，比如计算机中的存储路径为：C:\Users\52501.gradle\wrapper\dists\gradle-4.2.1-bin\dajvke9o8kmaxbu0kc5gcgeju\gradle-4.2.1。
 
@@ -1253,3 +1257,246 @@ plugins {
 ```
 
 这样就不需要配置buildscript了，直接配置plugins来使用插件。
+
+
+
+#### 自定义对象插件
+
+对象插件是实现了`org.gradle.api.plugins<Project>`接口的插件，这个接口中之定义了一个简单的apply方法，想要自定义插件就需要实现`org.gradle.api.plugins<Project>`接口。
+
+实现一个简单的自定义插件，为了方便测试，不再采用文本编辑，而是使用IntelliJ来编辑（AndroidStudio也可以），用IntelliJ来打开8.4.2.1节的示例，改写build.gradle文件，如下所示：
+
+build.gradle
+
+```groovy
+apply plugin:CustomPlugin
+class CustomPlugin implements Plugin<Project> {
+    @Override
+    void apply(Project project) {
+        project.task('CustomPluginTask') {
+            doLast {
+                println "自定义插件"
+            }
+        }
+    }
+}
+```
+
+在build.gradle中自定义一个插件CustomPlugin，在apply方法中创建一个名称为CustomPluginTask的任务。在IntelliJ的Terminal中输入`gradlew.bat CustomPluginTask`来执行CustomPluginTask任务，运行结果如下：
+
+``` 
+F:\app>gradlew.bat CustomPluginTask
+
+>Task:CustomPluginTask
+自定义插件
+
+... in 1s
+1 actionable task:1 executed
+```
+
+这个示例只能在自己的项目中使用，而且比较简单，复杂的插件会在8.5节中进行介绍。
+
+
+
+#### Gradle插件的作用和优点
+
+Gradle插件的作用主要有以下几点：
+
++ 为项目配置依赖
++ 为项目配置约定，比如约定源码的存放位置
++ 为项目添加任务，完成测试、编译和打包的工作
++ 为项目中的核心对象和其他插件的对象添加拓展类型
+
+使用Gradle插件主要有以下优点：
+
++ 重用和减少维护在多个项目类似的逻辑和开销
++ 更高程度的模块化
++ 封装必要的逻辑，并允许构建脚本尽可能是声明性的
+
+
+
+### 8.5 自定义Gradle插件
+
+自定义Gradle插件（自定义Gradle对象插件）主要有三种方式。分别是在build.gradle中编写、在buildSrc工程项目中编写、在独立项目中编写。
+
+#### 在build.gradle中编写
+
+Groovy、Java、Kotlin都可以作为实现插件的语言，在本节的示例中，使用Groovy作为实现语言。
+
+在实际工作中我们很少会在build.gradle中编写自定义插件，这里是为了学习写简单的示例，先来了解自定义插件。
+
+**1.简单的自定义插件**
+
+用IntelliJ新建一个Groovy工程。
+
+定义项目的GroupId和ArtifactId。
+
+build.gradle文件和运行结果见8.4.4。
+
+**2.自定义插件扩展**
+
+再举一个简单的插件拓展示例，通过插件拓展来配置CustomPluginTask的输出字符串，如下所示：
+
+build.gradle
+
+```groovy
+class CustomPluginPluginExtension {
+    String message = 'from CustomPlugin'
+}
+class CustomPlugin implements Plugin<Project> {
+    @Override
+    void apply(Project project) {
+        def extension = project.extensions.create('custom', CustomPluginPluginExtension)//1
+        project.task('CustomPluginTask') {
+            doLast {
+                println extension.message
+            }
+        }
+    }
+}
+apply plugin:CustomPlugin
+custom.message = "自定义插件拓展"//2
+```
+
+CustomPluginPluginExtension类中定义了message变量，CustomPluginPluginExtension是一个Groovy Bean（类似于JavaBean）。注释1处用于将拓展插件CustomPluginPluginExtension添加到插件列表中，其名称为custom。注释2处设置CustomPluginPluginExtension的message值。
+
+在Terminal中输入gradlew.bat CustomPluginTask来执行CustomPluginTask任务，运行结果如下所示：
+
+```
+F:\workspace\CustomPlugin gradlew.bat CustomPluginTask
+
+> Task:CustomPluginTask
+自定义插件拓展
+
+···1s
+1 actionable task:1 executed
+```
+
+
+
+#### 在buildSrc工程项目中编写
+
+除了在build.gradle中编写的自定义插件，还可以将插件的源码放在rootProjectDir/buildSrc/src/main/groovy目录中，Gradle会自动识别来完成编译和测试。
+
+在工程根目录下建立/buildSrc/src/main/groovy目录，如图所示：
+
+<img src="./Gradle.assets/image-20231222103422791.png" alt="image-20231222103422791" style="zoom:50%;" />
+
+在groovy目录中创建一个groovy文件，如下所示：
+
+buildSrc/src/main/groovy/CustomPlugin.groovy
+
+```groovy
+import org.gradle.api.Plugin;
+import org.gradle.api.Project;
+class CustomPlugin implements Plugin<Project> {
+    @Override
+    void apply(Project project) {
+        project.task('CustomPluginTask') {
+            doLast {
+                println "自定义插件"
+            }
+        }
+    }
+}
+```
+
+修改build.gradle为如下内容：
+
+build.gradle
+
+```groovy
+apply plugin:CustomPlugin
+```
+
+在Terminal中输入gradlew.bat CustomPluginTask任务，会打印处我们想要的结果。
+
+
+
+#### 在独立项目中编写
+
+无论是build.gradle中编写自定义插件，还是在buildSrc项目中编写自定义插件，都只能在自己的项目中使用。如果想分享给其他人使用，那么可以在一个独立的项目中编写插件，这个项目会生成一个包含插件类的JAR文件，有了JAR文件就可以进行分享了。
+
+##### 自定义插件
+
+为了和前两种方式区分，这里用IntelliJ新建一个Groovy工程，工程名为CustomPluginShare，后面代码会用到。
+
+**1.配置build.gradle**
+
+```groovy
+apply plugin:'groovy'
+
+dependencies {
+    compile gradleApi()
+    compile localGroovy()
+}
+```
+
+应用Groovy插件，并将Gradle API添加为编译时依赖项，build工程会在External Libraries中生成三个jar文件，如图所示：
+
+<img src="./Gradle.assets/image-20231222104257543.png" alt="image-20231222104257543" style="zoom:50%;" />
+
+这样我们就可以在非buildSrc工程项目中使用groovy语法和Gradle的API了。
+
+**2.创建自定义插件**
+
+在src/main/groovy/ 目录中创建一个包，在com.example.plugins创建一个groovy文件，如下所示：
+
+src/main/groovy/com/example/plugins/CustomPlugin.groovy
+
+```groovy
+package com.example.plugins
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+class CustomPlugin implements Plugin<Project> {
+    @Override
+    void apply(Project project) {
+        doLast {
+            println "自定义插件"
+        }
+    }
+}
+```
+
+**3.配置properties文件**
+
+在buildSrc工程项目中，Gradle可以自动识别插件，独立项目中的插件是如何被Gradle识别的呢？答案是需要在生成的jar文件中提供一个属性文件，这个属性文件名要与插件id相匹配。在resources中创建src/main/resources/META-INF/gradle-plugins/com.example.plugins.customplugin.properties，这个属性文件的名称实际就是插件的id，将properties文件的内容修改如下：
+
+src/main/resources/META-INF/gradle-plugins/com.example.plugins.customplugin.properties
+
+```groovy
+implementation-class=com.example.plugins.CustomPlugin
+```
+
+implementation-class属性为自定义插件的名称。
+
+**4.上传插件**
+
+这里为了方便举例直接将插件上传到本地，如果想要发布到Maven、ivy等仓库或者想要发布到Gradle插件门户，那么可以查看相关的文档。
+
+在build.gradle文件中添加如下内容。
+
+```groovy
+apply plugin:'maven'
+group = 'com.example.plugins'
+version = '1.0.0'
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url:uri('../repo'))
+        }
+    }
+}
+```
+
+这段代码会将生成的插件上传到项目的平级目录repo下。这段代码定义了group和version的名称，这些值会在其他项目依赖该插件时用到。我们Build后会在Gradle窗口中看到uploadArchives，如图所示：
+
+<img src="./Gradle.assets/image-20231222145455548.png" alt="image-20231222145455548" style="zoom: 67%;" />
+
+单击uploadArchives会在本地生成插件相关的文件，如图所示：
+
+<img src="./Gradle.assets/image-20231222145538298.png" alt="image-20231222145538298" style="zoom:67%;" />
+
+图8-16中的CustomPluginShare-1.0.0.rar就是我们需要的插件jar包。
+
+##### 在另一个项目中使用插件
