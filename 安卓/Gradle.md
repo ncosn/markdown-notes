@@ -1,4 +1,4 @@
-## Groovy基础
+## 7 Groovy基础
 
 ### Groovy概述
 
@@ -479,7 +479,7 @@ println p.name
 
 
 
-## Gradle核心
+## 8 Gradle核心
 
 ### 8.1 Gradle概述
 
@@ -1460,7 +1460,7 @@ class CustomPlugin implements Plugin<Project> {
 
 **3.配置properties文件**
 
-在buildSrc工程项目中，Gradle可以自动识别插件，独立项目中的插件是如何被Gradle识别的呢？答案是需要在生成的jar文件中提供一个属性文件，这个属性文件名要与插件id相匹配。在resources中创建src/main/resources/META-INF/gradle-plugins/com.example.plugins.customplugin.properties，这个属性文件的名称实际就是插件的id，将properties文件的内容修改如下：
+在buildSrc工程项目中，Gradle可以自动识别插件，独立项目中的插件是如何被Gradle识别的呢？答案是需要在生成的jar文件中提供一个属性文件，这个属性文件名要与插件id相匹配。在resources中创建`src/main/resources/META-INF/gradle-plugins/com.example.plugins.customplugin.properties`，这个属性文件的名称实际就是插件的id，将properties文件的内容修改如下：
 
 src/main/resources/META-INF/gradle-plugins/com.example.plugins.customplugin.properties
 
@@ -1500,3 +1500,575 @@ uploadArchives {
 图8-16中的CustomPluginShare-1.0.0.rar就是我们需要的插件jar包。
 
 ##### 在另一个项目中使用插件
+
+新建一个Groovy项目，将其命名为Project，build.gradle的代码如下：
+
+```groovy
+apply plugin:'com.example.plugins.customplugin'
+buildscript {
+    repositories {
+        url uri('../repo')
+    }
+    dependencies {
+        classpath 'com.example.plugins:CustomPluginShare:1.0.0'
+    }
+}
+```
+
+其中com.example.plugins是group，CustomPluginShare是自定义插件的名称，1.0.0是版本号，也可以这样写：
+
+```groovy
+dependencies {
+    classpath group:'com.example.plugins',name:'CustomPluginShare',version:'1.0.0'
+}
+```
+
+在Terminal中输入gradlew.bat CustomPluginTask来执行CustomPluginTask任务，就大功告成。
+
+如果我们将自定义插件发布到Gradle插件门户上，就可以使用插件DSL了。
+
+build.gradle
+
+```groovy
+plugins {
+    id 'com.example.plugins.customplugin' version '1.0.0'
+}
+```
+
+
+
+
+
+## 9 Gradle的Android插件
+
+### 9.1 什么是Gradle的Android插件
+
+Gradle有很多插件，为了支持Android项目的构建，Google为Gradle编写了Android插件，新的Android构建系统就是由Gradle 的Android插件组成的，Gradle是一个高级构建工具包，它管理依赖项并允许开发者自定义构建逻辑。Android Studio使用Gradle wrapper来集成Gradle的Android插件。需要注意的是，Gradle的Android插件也可以独立于Android Studio运行。
+
+新的Android构建系统主要有以下几个特点。
+
++ 代码和资源易于重用
++ 无论是针对多个APK发行版还是针对不同风格的应用程序，都可以很容易创建应用程序的多个不同版本
++ 易于配置、扩展和自定义构建过程
++ 良好的IDE集成
+
+Gradle的Android插件结合Android Studio成为目前十分流行的Android构建系统
+
+
+
+### 9.2 Android Studio的模块类型和项目视图
+
+Android Studio中每个项目包含一个或多个含有源码文件和资源文件的模块，这些模块可以独立构建、测试或调试，一个Android Studio的模块类型可以有以下几种：
+
+1、Android应用程序模块
+
+Android应用程序模块可能依赖于库模块，尽管许多Android应用程序只包含一个应用程序模块，构建系统会将其生成一个APK
+
+2、Android库模块
+
+Android库模块包含可冲用的特定于Android的代码和资源，构建系统会将其生成一个AAR。
+
+3、App引擎模块
+
+App引擎模块包含应用程序引擎集成的代码和资源
+
+4、Java库模块
+
+Java库模块包含可重用的代码，构建系统会将其生成一个JAR包。
+
+<img src="./Gradle.assets/image-20231225123419438.png" alt="image-20231225123419438" style="zoom:50%;" />
+
++ 项目build.gradle：配置项目的整体属性，比如指定使用的代码仓库、依赖的Gradle插件版本等
++ 模块build.gradle：配置当前Module的编译参数
++ gradle-wrapper.properties：用于配置Gradle Wrapper，详见8.3节。
++ gradle.properties：配置Gradle的编译参数。
++ settings.gradle：配置Gradle的多项目管理
++ local.properties：一般用来存放该Android项目的私有属性配置，比如Android项目的SDK路径。
+
+本章主要介绍项目build.gradle和模块build.gradle
+
+
+
+### 9.3 项目build.gradle
+
+新建一个Android项目，它的项目build.gradle内容如下：
+
+```groovy
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.3.2'//1
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+task clean(type:Delete) {
+    delete rootProject.buildDir
+}
+```
+
+注释1处配置依赖的是Gradle插件版本，`Gradle`插件属于第三方插件，因此这里在`buildscript`块中配置Google的`Maven`库和`JCenter`库，这样Gradle系统才能找到对应的Gradle插件。
+
+如果使用google报not found:'google()'错误，则可以用如下 代码代替：
+
+```groovy
+maven (url 'https://maven.google……')
+```
+
+
+
+### 9.4 模块build.gradle
+
+新建一个Android项目，它的模块build.gradle内容如下
+
+```groovy
+apply plugin:'com.android.application'
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        applicationId "com.example.myapplication"
+        minSdkVersion 15
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir:'libs',include:['*.jar'])
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.tes.espresso:espresso-core:3.0.2'
+}
+```
+
+#### Gradle的Android插件类型
+
+apply引入的插件id为com.android.application，说明当前模块是一个应用程序模块，Gradle的Android插件以下多个类型：
+
++ 应用程序插件：插件id为com.android.application，会生成一个APK
++ 库插件：插件id为com.android.library，会生成一个AAR，用于提供给其他应用程序模块使用。
++ 测试插件：插件id为com.android.test，用于测试其他模块
++ feature插件：插件id为com.android.feature，是创建Android Instant App时需要用到的插件
++ Instant App插件：插件id为com.android.instantapp，是Android Instant App的入口
+
+
+
+#### Android块
+
+Android块用于描述该Module构建过程中用到的所有参数
+
++ compileSdkVersion：配置编译该模块的SDK版本
++ buildToolsVersion：Android构建工具的版本
+
+##### defaultConfig块
+
+Android块中的defaultConfig块用于默认配置，常用的属性如表所示：
+
+<img src="./Gradle.assets/image-20231225135352275.png" alt="image-20231225135352275" style="zoom: 50%;" />
+
+##### buildTypes块
+
+buildTypes块用于配置构建不同类型的APK
+
+当我们新建一个项目时，在Android块中已经默认配置了buildTypes块。
+
+```groovy
+buildTypes {
+    release {
+        minifyEnabled false
+        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),'proguard-rules.pro'
+    }
+}
+```
+
+在Android Studio的Terminal中执行`gradlew.bat build`命令，会在该模块的`build/outputs/apk`目录中生成release的debug的APK，虽然只配置了release，但release和debug是默认配置，即使我们不配置也会生成。我们也可以修改默认的release和debug，甚至可以自定义构件类型，代码如下所示：
+
+```groovy
+buildTypes {
+    release {
+        minifyEnabled false
+        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),'proguard-rule.pro'
+    }
+    debug {
+        debuggable true
+    }
+    privitedebug {
+        applicationIdSuffix ""
+    }
+}
+```
+
+这时会在`build/output/apk`目录中生成release、debug、privitedebug的APK。
+
+buildTypes块还可以配置很多属性，常用的属性如表所示：
+
+<img src="./Gradle.assets/image-20231225143740535.png" alt="image-20231225143740535" style="zoom: 50%;" />
+
+##### signingConfigs块
+
+signingConfigs块用于配置签名设置，一般用来配置release模式，signingConfigs块常用的属性如表所示：
+
+<img src="./Gradle.assets/image-20231225144056072.png" alt="image-20231225144056072" style="zoom: 50%;" />
+
+signingConfigs块的配置如下所示：
+
+```groovy
+signingConfigs {
+    release {
+        storeFile file('C:/Users/liuwangshu/.android/release.keystore')
+        storePassword 'android'
+        keyAlias 'androidreleasekey'
+        keyPassword 'android'
+    }
+}
+```
+
+##### 其他配置块
+
+android块中除了defaultConfig块、buildTypes块、signingConfigs块还有其他配置块，这里列举一些其他配置块：
+
+<img src="./Gradle.assets/image-20231225144606992.png" alt="image-20231225144606992" style="zoom:50%;" />
+
+##### 全局配置
+
+如果多个module的配置是一样的，可以将这些配置提取出来，也就是使用全局配置。全局配置有多种方式，这里介绍其中的两种。
+
+**1、使用ext块配置**
+
+在项目build.gradle中使用ext块，如下所示：
+
+```groovy
+ext{
+    compileSdkVersion = 28
+    buildToolsVersion = "28.0.3"
+    minSdkVersion = 15
+    targetSdkVersion = 28
+}
+```
+
+在某个module的build.gradle中使用配置，如下所示：
+
+```groovy
+apply plugin:'com.android.application'
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    defaultConfig {
+        applicationId "com.example.liuwangshu.hookinstrumentation"
+        minSdkVersion rootproject.ext.minSdkVersion
+        targetSdkVersion rootproject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    ···
+}
+···
+```
+
+**2、使用config.gradle配置**
+
+首先在根目录下创建config.gradle文件来进行配置，如下所示：
+
+config.gradle
+
+```groovy
+ext {
+    android = {
+        applicationId:"com.example.liuwangshu.hookinstrumentation",
+            compileSdkVersion:28,
+            buildToolsVersion:"28.0.3",
+            minSdkVersion:15,
+            targetSdkVersion:28,
+    }
+    
+    dependencies=[
+        "appcompat-v7" : "com.android.support:appcompat-v7:28.0.0",
+            "constraint":"com.android.support.constraint:constraint-layout:1.1.3",
+    ]
+}
+```
+
+然后在项目build.gradle中添加`apply from: "config.gradle"`，这样项目的所有module都能用config.gradle中定义的参数。
+
+最后在module的build.gradle中使用配置，如下所示：
+
+```groovy
+apply plugin:'com.android.application'
+android {
+    compileSdkVersion rootProject.ext.android.compileSdkVersion
+    buildToolsVersion rootProject.ext.android.buildToolsVersion
+    defaultConfig {
+        applicationId rootProject.ext.android.applicationId
+        minSdkVersion rootproject.ext.android.minSdkVersion
+        targetSdkVersion rootproject.ext.android.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    ···
+    
+    dependencies {
+        implementation rootProject.ext.dependencies["constraint"]
+        implementation rootProject.ext.dependencies["appcompat-v7"]
+        ···
+    }
+}
+```
+
+#### dependencies块
+
+dependencies块用于配置该module构建过程中所依赖的所有库。Gradle插件3.4版本新增了API和implementation来代替compile配置依赖，其中API与compille是一样的。dependencies和API主要有以下区别：
+
++ implementation可以让module在编译时隐藏自己使用的依赖，但是在运行时这个依赖对所有模块是可见的，而API与compile一样，无法隐藏自己使用的依赖。
++ 使用API，如果一个module发生变化，那么这条依赖链上的所有module都需要重新编译，而使用implementation，只有直接依赖这个module需要重新编译。
+
+
+
+### 9.5 Android签名文件配置
+
+在一般公司中，当团队比较小的时候，App的签名信息都是放在项目中的，可能还会上传到GitHub上，这样做很方便。但随着团队人数增多，这样做的风险会越来越大，因为签名信息是重要的资源，这样就不能将签名上传到GitHub上了，也就不应该在build.gradle中直接配置签名。
+
+针对这个问题，主要有一下两种解决办法。
+
+（1）自定义一个签名配置签名。
+
+（2）在本地~/.gradle/gradle.properties文件中配置签名信息
+
+#### 自定义签名信息文件
+
+
+
+#### 本地添加签名信息文件
+
+
+
+
+
+
+
+
+
+### 9.6 Gradle的库依赖
+
+现在一个Android项目都需要引入其他库，比如jar、aar和Module等，现在分别对其进行介绍。如果不特意说明，则下面示例的代码均是写在模块build.gradle中的。
+
+**1.Gradle的本地库依赖**
+
+关于jar依赖可以按照如下这种形式写，可以指定一个jar也可以指定多个jar。
+
+```groovy
+//依赖引入libs下的所有jar
+implementation fileTree(dir:'libs',include:['*.jar'])
+
+//指定依赖某一个或几个jar
+implementation files('libs/XXX.jar','libs/XXX.jar')
+```
+
+arr依赖需要额外增加一些语句，如下所示：
+
+```groovy
+android {
+    ···
+    repositories {
+        flatDir {
+            dirs "libs"
+        }
+    }
+}
+dependencies {
+    implementation fileTree(dir:'libs',include:['*.arr'])
+}
+```
+
+**2.Gradle的本地Module依赖**
+
+当项目中有多个Module时，我们需要现在setting.gradle中引入Module，如下所示：
+
+```groovy
+include ':app'
+include ':library1',':library2'
+```
+
+然后在模块build.gradle中引入
+
+```groovy
+implementation project(':library1')
+```
+
+**3.Gradle的远程库依赖**
+
+当在AndroidStudio中新建一个项目时，会在项目build.gradle中有如下代码。
+
+```groovy
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.4.0'
+    }
+}
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+```
+
+这些代码都是默认的，在buildscript块和allprojects块中，通过repository来引入Google的Maven库和JCenter库中去寻找，然后在模块build.gradle中加入如下代码，就可以引入远程库。
+
+```groovy
+implementation group:'com.android.support',name:'appcompat-v7',version:'28.0.0'
+//简写
+implementation 'com.android.support:appcompat-v7:28.0.0'
+```
+
+
+
+
+
+### 9.7 Gradle的库依赖
+
+随着Gradle依赖的库越来越多，就会产生一些问题，比如依赖冲突，为了解决依赖冲突，我们首先需要了解Gradle的库依赖管理的几个技术点。
+
+#### 9.7.1 Gradle的依赖传递
+
+Gradle默认是支持依赖传递的，所以当用到Gradle依赖时一定会涉及依赖传递，这是必须要知道的一个知识点。
+
+那么什么是依赖传递呢？这里举一个简单的示例。
+
+projectC依赖projectB，projectB依赖projectA，那么projectC就依赖projectA
+
+以来传递会产生一些问题，比如重复依赖、依赖错误等，我们可以通过transitive来禁止依赖传递，如下所示：
+
+```groovy
+implementation('com.xxx.xxx:xxx:3.6.3') {
+    trasitive false
+}
+```
+
+上述代码禁止了com.xxx.xxx:xxx:3.6.3库的依赖传递，还可以使用如下语句来关闭当前模块的所有库的依赖传递
+
+```groovy
+configuration.all {
+    transitive = false
+}
+```
+
+只是这样就需要手动添加当前模块的每个库的依赖项，一般不会这么做
+
+
+
+#### 9.7.2 Gradle的依赖传递
+
+有了依赖检查，我们可以解决依赖产生的问题。依赖检查有很多种方式，下面分别来介绍这几种方式。
+
+**1.使用Gradle的命令行**
+
+可以直接使用Gradle的命令行来进行依赖检查，以Windows 平台为例，使用cmd进人项目的根目录，执行gradle:app:dependencies即可，其中app是我们新建工程时默认的模块的名称。
+
+……
+
+**2.使用Gradle面板**
+
+……
+
+**3.使用Gradle View插件**
+
+……
+
+
+
+#### 9.7.3 Gradle的依赖冲突
+
+依赖冲突产生的原因大多是库的版本问题，比如，在build.gradle中这样写
+
+```groovy
+implementation 'com.squareup.retrofit2:retrofit:2.6.0'
+implementation 'com.squareup.okio:okio:1.14.0'
+```
+
+在9.7.2中，我们知道retrofit:2.6.0依赖的okio的版本是1.15.0，而这里引入的okio的版本为1.14.0，引入的版本不同就会产生依赖冲突。依赖冲突的解决关键有两点，一个是Gradle的依赖检查；另一个是利用Gradle的关键字，合理利用它们是解决依赖冲突的关键，在9.7.1中已经介绍了transitive，现在介绍其余的关键字。
+
+##### force
+
+有时候我们不是想要排除某个库，而是需要强制使用统一的版本，force可以强制设置模块的库的版本，在模块build.gradle中加入如下代码。
+
+```groovy
+configurations.all {
+    resolutionStrategy {
+        force 'com.squareup.okio:okio:2.1.0'
+    }
+}
+dependencies {
+    ···
+}
+```
+
+强制当前模块的okio的版本为2.1.0，一用依赖项检查来查看retrofit的依赖如下所示。
+
+```
++--- com.squareup.retrofit2:retrofit:2.6.0
+|	\--- com.squareup.okhttp3:okhttp:3.12.0
+|		\--- com.squareup.okio:okio:1.15.0 -> 2.1.0
+\--- com.squaureup.okio:okio:1.14.0 -> 2.1.0
+```
+
+可以看到okio的版本都被强制升级到了2.1.0，这样就可以解决一些依赖冲突的问题。
+
+##### exclude
+
+有时候需要排除库依赖传递中涉及的库，此时不能靠关闭依赖传递来解决问题，这是可以使用exclude。。
+
+我们知道com.android.support:appcompat-v7:28.0.0依赖于com.android.support:support-annotations:28.0.0、com.android.support:support-compat:28.0.0和com.android.support:cursoradapter:28.0.0等库，这时我们不想再依赖support-annotations库，如下所示：
+
+```groovy
+configurations {
+    all*.exclude group: 'com.android.support',module:'support-annotations'
+}
+dependencies {
+    ···
+}
+```
+
+使用依赖检查来查看com.android.support:appcompat-v7:28.0.0的依赖，如下所示：
+
+```
++--- com.android.support:appcompat-v7:28.0.0
+|	+--- com.android.support:supportcompat:28.0.0
+|	|	+----com.android.support:collections:28.0.0
+|	|	+---android.arch.lifecycle:runtime:1.1.1
+|	|	|	+--- android.arch.lifecycle:common:1.1.1
+|	|	|	\--- android.arch.core:common:1.1.1
+|	|	\--- com.android.support:versionedparcelable:28.0.0
+|	|		\--- com.android.support;collections:28.0.0
+|	+--- com,android.support:collections:28.0.0
+|	+--- com.android.support:cursoradapter:28.0.0
+```
+
+和9.7.2节日志对比，可以发现com.android.support:appcompat-v7:28.0.0不再依赖com.android.support:support-annotations:28.0
+

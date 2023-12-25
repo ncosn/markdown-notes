@@ -122,7 +122,7 @@ init main(int argc, char** argv) {
         exit(1);
     }
     //用于设置子进程信号处理函数，如果子进程（Zygote进程）异常退出，init进程会调用该函数中设定的信号处理函数来进行处理
-	singal_handler_init();//2
+	signal_handler_init();//2
 	//导入默认的环境变量
 	property_load_boot_defaults();
 	export_oem_lock_status();
@@ -999,7 +999,7 @@ private void run() {
 }
 ```
 
-在注释1处加载了动态库libandroid_servers.so。接下来在注释2处创建SystemServiceManager，它会对系统服务进行创建、启动和生命周期管理。在注释3处的startBootstrapServices方法中用SystemServiceManager启动了ActivityManagerService、PowerManagerService、PackageManagerService等服务。在注释4处的startCoreServices方法中则启动了DropBoxManagerService、BatteryService、UsageStatsService和WebViewUpdateService。在注释5处的startOtherServices方法中启动了CameraService、AlarmManagerService、VrManagerService等服务。这些服务的父类均为SystemService。从注释3、4、5的方法中可以看出，官方把系统服务分为三种类型，分别是引导服务、核心服务和其他服务，其中服务是一些非紧要和不需要立即启动的服务。这些系统服务总共有100多个，表中列出部分系统服务及其作用。
+在注释1处加载了动态库libandroid_servers.so。接下来在注释2处创建`SystemServiceManager`，它会对系统服务进行创建、启动和生命周期管理。在注释3处的startBootstrapServices方法中用SystemServiceManager启动了**ActivityManagerService、PowerManagerService、PackageManagerService**等服务。在注释4处的startCoreServices方法中则启动了**DropBoxManagerService、BatteryService、UsageStatsService和WebViewUpdateService**。在注释5处的startOtherServices方法中启动了**CameraService、AlarmManagerService、VrManagerService**等服务。这些服务的父类均为SystemService。从注释3、4、5的方法中可以看出，官方把系统服务分为三种类型，分别是**引导服务**、**核心服务**和**其他服务**，其中服务是一些非紧要和不需要立即启动的服务。这些系统服务总共有100多个，表中列出部分系统服务及其作用。
 
 <img src="./Android进阶解密.assets/image-20231204153150469.png" alt="image-20231204153150469" style="zoom: 33%;" />
 
@@ -1045,7 +1045,7 @@ public static PackageManagerService main(Context context, Installer installer, b
 }
 ```
 
-在注释1直接创建PackageManagerService并在注释2处将PackageManagerService注册到ServiceManager中，ServiceManager用来管理系统中的各种Service，用于系统C/S架构中的Binder通信机制：Client端要使用某个Service，则需要先到ServiceManager查询Service的相关信息，然后根据Service的相关信息与Service所在的Server进程建立通信通路，这样Client端就可以使用Service了。
+在注释1直接创建PackageManagerService并在注释2处将PackageManagerService注册到ServiceManager中，ServiceManager用来管理系统中的各种Service，**用于系统C/S架构中的Binder通信机制**：Client端要使用某个Service，则需要先到ServiceManager查询Service的相关信息，然后根据Service的相关信息与Service所在的Server进程建立通信通路，这样Client端就可以使用Service了。
 
 #### SystemServer进程总结
 
