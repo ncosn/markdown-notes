@@ -1009,7 +1009,7 @@ private void run() {
 mPowerManagerService = mSystemServiceManager.startService(PowerManagerService.class);
 ```
 
-SystemServiceManager的startService方法启动了PowerManagerService：
+SystemServiceManager的**startService方法**启动了PowerManagerService：
 
 frameworks/base/services/core/java/com/android/server/SystemServiceManager.java
 
