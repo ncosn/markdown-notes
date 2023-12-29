@@ -1579,7 +1579,7 @@ private final void startProcessLocked(ProcessRecord app, String hostingType, Str
 }
 ```
 
-在注释1处得到创建应用程序进程的用户ID，在注释2处对用户组ID（gids）进行创建和赋值。在注释3处如果entryPoint为null，则赋值为android.app.ActivityThread，这个值就是应用程序进程主线程的类名。在注释4处调用Process的start方法，将此前得到的应用程序进程用户ID和用户组ID传进去，第一个参数entryPoint我们得知是android.app.ActivityThread，后面章节还会介绍。接下来查看Process的start方法：
+在注释1处得到创建应用程序进程的用户ID，在注释2处对用户组ID（gids）进行创建和赋值。在注释3处如果entryPoint为null，则赋值为`android.app.ActivityThread`，这个值就是**应用程序进程主线程的类名**。在注释4处调用Process的start方法，将此前得到的应用程序进程用户ID和用户组ID传进去，第一个参数entryPoint我们得知是android.app.ActivityThread，后面章节还会介绍。接下来查看Process的start方法：
 
 frameworks/base/core/java/android/os/Process.java
 
@@ -1653,7 +1653,7 @@ String[] extraArgs)throws ZygoteStartFailedEx {
 }
 ```
 
-在注释1处创建了字符串列表argsForZygote，并将启动应用进程的启动参数保存在argsForZygote中，方法的最后会调用zygoteSendArgsAndGetResult方法，需要注意的是，zygoteSendArgsAndGetResult方法的第一个参数中调用了openZygoteSocketlfNeeded方法①，而第二个参数是保存应用进程的启动参数的argsForZygote。zygoteSendArgsAndGetResult方法如下所示：
+在注释1处创建了字符串列表argsForZygote，并将启动应用进程的启动参数保存在`argsForZygote`中，方法的最后会调用zygoteSendArgsAndGetResult方法，需要注意的是，zygoteSendArgsAndGetResult方法的第一个参数中调用了openZygoteSocketlfNeeded方法①，而第二个参数是保存应用进程的启动参数的argsForZygote。zygoteSendArgsAndGetResult方法如下所示：
 
 frameworks/base/core/java/android/os/ZygoteProcess.java
 
@@ -1691,7 +1691,7 @@ private static Process.ProcessStartResult zygoteSendArgsAndGetResult(ZygoteState
 }
 ```
 
-zygoteSendArgsAndGetResult方法的主要作用就是将传入的应用进程的启动参数argsForZygote写入ZygoteState中，ZygoteState是ZygoteProcess的静态内部类，用于表示与Zygote进程通信的状态。结合前面的标注①我们知道ZygoteState其实是由openZygoteSocketIfNeeded方法返回的，那么我们接着来看openZygoteSocketIfNeeded方法做了什么：
+zygoteSendArgsAndGetResult方法的主要作用就是将传入的应用进程的启动参数`argsForZygote`写入`ZygoteState`中，**ZygoteState是ZygoteProcess的静态内部类**，用于表示与Zygote进程通信的状态。结合前面的标注①我们知道ZygoteState其实是由openZygoteSocketIfNeeded方法返回的，那么我们接着来看openZygoteSocketIfNeeded方法做了什么：
 
 frameworks/base/core/java/android/os/ZygoteProcess.java
 
@@ -1737,7 +1737,7 @@ private ZygoteState openZygoteSocketIfNeeded (String abi) throws ZygoteStartFail
 
 ![image-20231206143002345](./Android进阶解密.assets/image-20231206143002345.png)
 
-Socket连接成功并匹配ABI后会返回ZygoteState类型对象，我们在分析zygoteSendArgsAndGetResult方法中讲过，会将应用进程的启动参数 argsForZygote 写入ZygoteState中，这样Zygote进程就会收到一个创建新的应用程序的请求，我们回到ZygoteInit的main方法：
+Socket连接成功并匹配ABI后会**返回`ZygoteState`类型对象**，我们在分析zygoteSendArgsAndGetResult方法中讲过，会将应用进程的**启动参数 `argsForZygote`** 写入ZygoteState中，这样Zygote进程就会收到一个创建新的应用程序的请求，我们回到ZygoteInit的main方法：
 
 frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
 
@@ -1779,7 +1779,7 @@ public static void main(String argv[]) {
 }
 ```
 
-这些内容在2.2.3讲过，这里在讲一遍。在注释1处通过registerZygoteSocket方法创建了一个Server端的Socket，这个name为“zygote”的Socket用来等待AMS请求Zygote，以创建新的应用程序进程，关于AMS后面的章节会进行介绍。在注释2处预加载类和资源。在注释3处启动SystemServer进程，这样系统的服务也会由SystemServer进程启动起来。在注释4处调用ZygoteServer的runSelectLoop方法来等待AMS请求创建新的应用程序进程。下面来看ZygoteServer的runSelectLoop方法：
+这些内容在2.2.3讲过，这里在讲一遍。在注释1处通过registerZygoteSocket方法创建了一个Server端的Socket，这个name为“zygote”的Socket用来等待AMS请求Zygote，以创建新的应用程序进程，关于AMS后面的章节会进行介绍。在注释2处预加载类和资源。在注释3处启动SystemServer进程，这样系统的服务也会由SystemServer进程启动起来。在注释4处调用ZygoteServer的`runSelectLoop`方法来等待AMS请求创建新的应用程序进程。下面来看ZygoteServer的runSelectLoop方法：
 
 frameworks/base/core/java/com/andorid/internal/os/ZygoteServer.java
 
@@ -1861,7 +1861,7 @@ boolean runOnce(ZygoteServer zygoteServer) throws Zygote.MethodAndArgsCaller {
 }
 ```
 
-在注释1处调用readArgumentList方法来获取应用程序进程的启动参数，并在注释2处将readArgumentList方法返回的字符串数组args封装到Arguments类型的parsedArgs对象中。在注释3处调用Zygote的forkAndSpecial方法来创建应用程序进程，参数为parsedArgs中存储的应用进程启动参数，返回值为pid。forkAndSpecialize方法主要是**通过fork当前进程来创建一个子进程**的，如果pid等于0，则说明当前代码逻辑运行在新创建的子进程（应用程序进程）中，这是就会调用**handleChildProc方法**来处理应用程序进程：
+在注释1处调用readArgumentList方法来获取应用程序进程的启动参数，并在注释2处将readArgumentList方法返回的字符串数组args封装到Arguments类型的parsedArgs对象中。在注释3处调用Zygote的forkAndSpecial方法来创建应用程序进程，参数为parsedArgs中存储的应用进程启动参数，返回值为pid。`forkAndSpecialize`方法主要是**通过fork当前进程来创建一个子进程**的，如果pid等于0，则说明当前代码逻辑运行在新创建的子进程（应用程序进程）中，这是就会调用**`handleChildProc`方法**来处理应用程序进程：
 
 frameworks/base/core/java/com/android/internal/os/ZygoteConnection.java
 
@@ -1898,7 +1898,7 @@ public static final void zygoteInit(int targetSdkVersion,String[]argv,
 }
 ```
 
-在注释1处会在新创建的应用程序进程中**创建Binder线程池**，这将在3.3节详细介绍。在注释2处调用了RuntimeInit的applicationInit方法：
+在注释1处会**在新创建的应用程序进程中创建Binder线程池**，这将在3.3节详细介绍。在注释2处调用了RuntimeInit的applicationInit方法：
 
 frameworks/base/core/java/com/android/internal/os/RuntimeInit.java
 
@@ -1963,6 +1963,12 @@ public static void main(String argv[]){
 }
 ```
 
+> 这个异常的抛出和接收过程可以理解为跨进程的异常传递。在应用程序进程中，`MethodAndArgsCaller` 异常是由应用程序的主线程执行 `main` 方法时抛出的。然后，该异常通过 IPC（Inter-Process Communication）机制传递到 Zygote 进程。
+>
+> 在 Zygote 进程中，有一个专门的类 `ZygoteInit.MethodAndArgsCaller.run`，负责接收来自应用程序进程的异常并进行处理。具体而言，Zygote 进程通过 IPC 从应用程序进程获取异常信息，并在 `run` 方法中重新抛出异常，这样异常就能够在 Zygote 进程的上下文中被处理。
+>
+> 总的来说，这个过程确实涉及到了在不同进程中的异常抛出和接收。这种异常传递机制允许 Zygote 进程在创建新应用程序进程时捕获到应用程序进程中的异常，从而更好地进行错误处理和记录。
+
 当捕获到MethodAndArgsCaller异常时，就会在注释1处调用MethodAndArgsCaller的run方法，MethodAndArgsCaller是Zygote.java的静态内部类：
 
 frameworks/base/core/java/com/android/internal/os/Zygote.java
@@ -1986,13 +1992,19 @@ public static class MethodAndArgsCaller extends Exceptionimplements Runnable {
 }
 ```
 
+> 在 `MethodAndArgsCaller` 的 `run` 方法中，确实会涉及到跨进程通信。这是因为 `run` 方法的主要责任是与 Zygote 进程通信，以执行应用程序的 `main` 方法。具体而言，它会通过 IPC 机制（Inter-Process Communication）将应用程序的启动请求发送给 Zygote 进程，并等待 Zygote 进程的响应。
+>
+> 在 Zygote 进程中，`ZygoteConnection` 类负责处理来自应用程序进程的请求，并在这个过程中会动态地调用 `ActivityThread` 的 `main` 方法，启动应用程序的主线程。
+
 注释1处的mMethod指的就是ActivityThread的main方法，调用了mMethod的invoke方法后，**ActivityThread的main方法**就会被动态调用，应用程序进程就进入了ActivityThread的main方法中。讲到这里，**应用程序进程就创建完成了**并且运行了主线程的管理类ActivityThread。
+
+> main函数见3.4节，执行thread.attach告知AMS并回传自己的binder句柄
 
 
 
 ### 3.3 Binder线程池启动过程
 
-在3.2.2节中学习了Zygote接收请求并创建应用程序进程，其中在应用程序进程创建过程中会启动Binder线程池，我们来查看ZygoteInit类的zygoteInit方法：
+在3.2.2节中学习了Zygote接收请求并创建应用程序进程，其中在应用程序进程中会启动Binder线程池，我们来查看ZygoteInit类的zygoteInit方法：
 
 frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
 
@@ -2010,7 +2022,7 @@ public static final void zygoteInit(int targetSdkVersion,String[]argv,
 }
 ```
 
-在注释1处会在新创建的应用程序进程中创建Binder线程池，下面来查看nativeZygoteInit方法：
+在注释1处会**在新创建的应用程序进程中创建Binder线程池**，下面来查看nativeZygoteInit方法：
 
 frameworks/base/core/java/com/android/internal/os/ZygoteInit.java
 
@@ -2207,9 +2219,12 @@ public static void main(String[] args) {
 }
 ```
 
-ActivityThread类用于管理当前应用程序的主线程，在注释1处**创建主线程的消息循环Looper**，在注释2处**创建ActivityThread**。在注释3处判断Handler类型的sMainThreadHandler是否为null，如果为null则在注释4处**获取H类并赋值给sMainThreadHandler**，这个H类继承自Handler，是**ActivityThread的内部类**，用于处理主线程的消息循环，在第4章、第5章我们将会经常提到它。在注释5处调用Looper的loop方法，使得Looper开始处理消息。可以看出，系统在应用程序进程启动完成后，就会创建一个消息循环，这样运行在应用程序进程中的应用程序可以方便地使用消息处理机制。
+ActivityThread类用于管理当前应用程序的主线程，在注释1处**创建主线程的消息循环Looper**，在注释2处**创建ActivityThread**。在注释3处判断Handler类型的sMainThreadHandler是否为null，如果为null则在注释4处**获取H类并赋值给`sMainThreadHandler`**，这个H类继承自Handler，是**ActivityThread的内部类**，用于处理主线程的消息循环，在第4章、第5章我们将会经常提到它。在注释5处调用Looper的loop方法，使得Looper开始处理消息。可以看出，系统在应用程序进程启动完成后，就会创建一个消息循环，这样运行在应用程序进程中的应用程序可以方便地使用消息处理机制。
 
-
+> 1. **调用 `thread.attach` 方法：** 在 `ActivityThread` 的 `main` 方法中，会调用 `thread.attach` 方法，这个方法主要负责将 `ActivityThread` 与 `ApplicationThread` 绑定。（false表示当前启动的是一个普通的应用程序进程，而不是系统进程。）
+> 2. **Binder 对象的传递：** 在 `thread.attach` 方法内部，会通过 IPC 机制将 `ApplicationThread` 的 Binder 对象传递给 AMS。这个过程通常涉及到 Binder 通信，其中 `ApplicationThread` 的 Binder 对象会被传递给 AMS。
+> 3. **AMS 的处理：** AMS 接收到来自应用程序进程的 `ApplicationThread` 的 Binder 对象后，会将它保存起来，以便后续可以通过这个 Binder 与应用程序的 `ActivityThread` 进行通信。
+> 4. **回传自己的 Binder 句柄：** 一旦 AMS 接收到 Binder 对象，并成功与应用程序进程建立通信，AMS 可以生成并返回一个 Binder 句柄给应用程序进程。这个句柄通常包含了应用程序进程的进程 ID 和 AMS 分配的 Binder 对象的引用。
 
 
 
@@ -2296,7 +2311,7 @@ public void startActivityForResult(@RequiresPermission Intent intent,int request
 }
 ```
 
-注释1处的mParent是Activity类型，表示当前Activity的父类。因为根Activity还没有创建出来，mParent==null成立。接着调用Instrumentation的execStartActivity方法，Instrumentation主要用来监控应用程序和系统的交互，execStartActivity方法的代码如下：
+注释1处的mParent是Activity类型，表示当前Activity的父类。因为根Activity还没有创建出来，mParent==null成立。接着调用Instrumentation的execStartActivity方法，**Instrumentation主要用来监控应用程序和系统的交互**，execStartActivity方法的代码如下：
 
 frameworks/base/core/java/android/app/Instrumentation.java
 
@@ -2333,15 +2348,14 @@ public static IActivityManager getService() {
 private static final Singleton<IActivityManager> IActivityManagerSingleton = new Singleton<IActivityManager>() {
     @Override
     protected IActivityManager create() {
-        final IBinder b = ServiceManager.getService(Context.ACTIVITY
-SERVICE);//1
+        final IBinder b = ServiceManager.getService(Context.ACTIVITY_SERVICE);//1
         final IActivityManager am = IActivityManager.Stub.asInterface(b);//2
         return am;
     }
 };
 ```
 
-getService方法调用了IActivityManagerSingleton的get方法，我们接着往下看，IActivityManagerSingleton是一个Singleton类。在注释1处得到名为“activity”的Service引用，也就是**IBinder类型的AMS的引用**。接着在注释2处将它**转换成IActivityManager类型的对象**，这段代码采用的是AIDL，IActivityManager.java是由AIDL工具在编译时自动生成的，IActivityManager。aidl的文件路径为frameworks/base/core/java/android/app/IActivityManager.aidl。要实现进程间通信，服务器端也就是AMS只需要集成IActivityManager.Stub类并实现相应的方法就可以了。注意Android 8.0之前并没有采用AIDL，而是采用了类似AIDL的形式，用AMS的代理对象ActivityManagerProxy来与AMS进行进程间通信，Android8.0去除了ActivityManagerNative的内部类ActivityManagerProxy，代替它的是IActivityManager，它是AMS在本地的代理，回到Instrumentation类的execStartActivity方法中，从上面得知execStartActivity方法最终调用的是AMS的startActivity方法。
+getService方法调用了IActivityManagerSingleton的get方法，我们接着往下看，IActivityManagerSingleton是一个Singleton类。在注释1处得到名为“activity”的Service引用，也就是**IBinder类型的AMS的引用**。接着在注释2处将它**转换成`IActivityManager`类型的对象**，这段代码采用的是AIDL，IActivityManager.java是由AIDL工具在编译时自动生成的，IActivityManager.aidl的文件路径为frameworks/base/core/java/android/app/IActivityManager.aidl。要实现进程间通信，服务器端也就是AMS只需要集成IActivityManager.Stub类并实现相应的方法就可以了。注意Android 8.0之前并没有采用AIDL，而是采用了类似AIDL的形式，用AMS的代理对象ActivityManagerProxy来与AMS进行进程间通信，Android8.0去除了ActivityManagerNative的内部类ActivityManagerProxy，代替它的是IActivityManager，它是AMS在本地的代理，回到Instrumentation类的execStartActivity方法中，从上面得知execStartActivity方法**最终调用的是AMS的startActivity方法**。
 
 
 
@@ -2367,7 +2381,7 @@ public final int startActivity(IApplicationThread caller, String callingPackage,
 }
 ```
 
-在AMS的startActivity方法中返回了startActivityAsUser方法，可以发现startActivityAsUser方法比startActivity方法多了一个参数UserHandle.getCallingUserId()，这个方法会获得调用者的UserId，AMS根据这个UserId来确定调用者权限。
+在AMS的startActivity方法中返回了startActivityAsUser方法，可以发现startActivityAsUser方法比startActivity方法多了一个参数UserHandle.getCallingUserId()，这个方法会获得**调用者的UserId**，AMS根据这个UserId来**确定调用者权限**。
 
 frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
 
@@ -2389,7 +2403,7 @@ public final int startActivityAsUser(IApplicationThread caller, String callingPa
 }
 ```
 
-在注释1处判断调用者进程是否被隔离，如果被隔离则抛出SecurityException异常，在注释2处检查调用者是否有权限，如果没有权限也会抛出SecurityException异常。最后调用了ActivityStarter的startActivityLocked方法，startActivityLocked方法的参数要比startActivityAsUser多几个，需要注意的是倒数第二个参数类型为TaskRecord，代表启动的Activity所在的栈。最后一个参数“startActivityAsUser”代表启动的理由。startActivityMayWait方法的代码如下所示：
+在注释1处判断调用者进程是否被隔离，如果**被隔离则抛出SecurityException异常**，在注释2处检查调用者是否有权限，如果**没有权限也会抛出SecurityException异常**。最后调用了ActivityStarter的startActivityLocked方法，startActivityLocked方法的参数要比startActivityAsUser多几个，需要注意的是倒数第二个参数类型为TaskRecord，代表启动的Activity所在的栈。最后一个参数“startActivityAsUser”代表启动的理由。startActivityMayWait方法的代码如下所示：
 
 frameworks/base/services/core/java/com/android/server/am/ActivityStarter.java
 
@@ -2412,7 +2426,7 @@ final int startActivityMayWait(IApplicationThread caller, int callinqUidString c
 frameworks/base/services/core/java/com/android/server/am/ActivityStarter.java
 
 ```java
-int startActivityLocked(IApplicationThread caller, Intent intent,IntentephemeralIntent，String resolvedType，ActivityInfo aInfo，ResolveInfo rInfo,IVoiceInteractionSession voiceSession， IVoiceInteractor voiceInteractorIBinder resultTo,String resultWho, int requestCode,int callingPid,intcallingUid，String callingPackage，int realCallingPid，int realCallinqUidint startFlags，ActivityOptions options， boolean ignoreTargetSecurity.boolean component Specified，ActivityRecord[] outActivityActivityStackSupervisor,ActivityContainer container，TaskRecord inTask,String reason) {
+int startActivityLocked(IApplicationThread caller, Intent intent,IntentephemeralIntent,String resolvedType,ActivityInfo aInfo,ResolveInfo rInfo,IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,IBinder resultTo,String resultWho, int requestCode,int callingPid,int callingUid,String callingPackage,int realCallingPid,int realCallinqUidint startFlags,ActivityOptions options, boolean ignoreTargetSecurity,boolean component Specified,ActivityRecord[] outActivityActivityStackSupervisor,ActivityContainer container,TaskRecord inTask,String reason) {
     //判断启动的理由不为空
     if (TextUtils.isEmpty(reason)) {//1
         throw new IllegalArgumentException("Need to specify a reason,");
@@ -2466,12 +2480,12 @@ TaskRecord inTask) {
 }
 ```
 
-ActivityStarter 的 startActivity 方法逻辑比较多，这里列出部分我们需要关心的代码在注释1处判断IApplicationThread 类型的 caller 是否为 null，这个 caller 是方法调用一路传过来的，指向的是 **Launcher 所在的应用程序进程的 ApplicationThread 对象**，在注释2处调用AMS的 getRecordForAppLocked 方法得到的是代表 Launcher 进程的 callerApp 对象，它是ProcessRecord类型的，**ProcessRecord 用于描述一个应用程序进程**。同样地，**ActivityRecord用于描述一个 Activity**，用来记录一个 Activity 的所有信息。接下来创建 ActivityRecord，用于描述将要启动的Activity，并在注释3处将创建的ActivityRecord赋值给ActivityRecord[]类型的outActivity，这个 outActivity 会作为注释4处的startActivity 方法的参数传递下去。
+ActivityStarter 的 startActivity 方法逻辑比较多，这里列出部分我们需要关心的代码在注释1处判断IApplicationThread 类型的 caller 是否为 null，这个 caller 是方法调用一路传过来的，指向的是 **Launcher 所在的应用程序进程的 ApplicationThread 对象**，在注释2处调用AMS的 getRecordForAppLocked 方法得到的是代表 Launcher 进程的 `callerApp` 对象，它是ProcessRecord类型的，**ProcessRecord 用于描述一个应用程序进程**。同样地，ActivityRecord用于描述一个 Activity，用来记录一个 Activity 的所有信息。接下来**创建 ActivityRecord**，**用于描述将要启动的Activity**，并在注释3处将创建的ActivityRecord赋值给ActivityRecord[]类型的`outActivity`，这个 outActivity 会作为注释4处的startActivity 方法的参数传递下去。
 
 frameworks/base/service/core/java/com/android/server/am/ActivityStarter.java
 
 ```java
-private int startActivityfinal ActivityRecord r，ActivityRecord sourceRecordIVoiceInteractionSession voiceSession，IVoiceInteractor voiceInteractorint startFlags，boolean doResume， ActivityOptions options,TaskRecordinTask，ActivityRecord[] outActivity) {
+private int startActivity(final ActivityRecord r,ActivityRecord sourceRecord, IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor, int startFlags, boolean doResume, ActivityOptions options,TaskRecord inTask, ActivityRecord[] outActivity) {
     int result=START CANCELED;
     try {
         mService.mWindowManager.deferSurfaceLayout();
@@ -2519,7 +2533,7 @@ private int startActivityUnchecked(final ActivityRecord r,ActivityRecordsourceRe
 }
 ```
 
-startActivityUnchecked 方法主要处理与栈管理相关的逻辑。在标注①处我们得知启动根Activity时会将Intent的 Flag 设置为FLAG ACTIVITY NEWTASK，这样注释1处的条件判断就会满足，接着执行注释2处的 setTaskFromReuseOrCreateNewTask 方法其内部会**创建一个新的 TaskRecord，用来描述一个 Activity 任务栈**，也就是说 setTaskFromReuseOrCreateNewTask 方法内部会创建一个新的 Activity 任务栈。Activity任务栈其实是一个假想的模型，并不真实存在，关于 Activity 任务栈会在第 6 章进行介绍在注释3处会调用 ActivityStackSupervisor 的 resumeFocusedStackTopActivityLocked 方法如下所示：
+startActivityUnchecked 方法主要处理与栈管理相关的逻辑。在标注①处我们得知启动根Activity时会将Intent的 Flag 设置为FLAG ACTIVITY_NEW_TASK，这样注释1处的条件判断就会满足，接着执行注释2处的 setTaskFromReuseOrCreateNewTask 方法其内部会**创建一个新的 TaskRecord，用来描述一个 Activity 任务栈**，也就是说 setTaskFromReuseOrCreateNewTask 方法内部会创建一个新的 Activity 任务栈。Activity任务栈其实是一个假想的模型，并不真实存在，关于 Activity 任务栈会在第 6 章进行介绍。在注释3处会调用 ActivityStackSupervisor 的 resumeFocusedStackTopActivityLocked 方法，如下所示：
 
 frameworks/base/services/core/java/com/android/server/am/ActivityStackSupervisor.java
 
@@ -2531,7 +2545,7 @@ boolean resumeForcusedStackTopActivityLocked(
     }
     //获取要启动的Activity所在栈的栈顶的不是处于停止状态的ActivityRecord
     final ActivityRecord r = mFocusedStack,topRunningActivitylocked();//1
-    if (r==nullll r.state != RESUMED) {//2
+    if (r==null || r.state != RESUMED) {//2
         mFocusedStack.resumeTopActivityUncheckedLocked(null，null);//3
     } else if (r.state == RESUMED) {
         mFocusedStack.executeAppTransition(targetOptions);
@@ -2540,12 +2554,12 @@ boolean resumeForcusedStackTopActivityLocked(
 }
 ```
 
-在注释1处调用ActivityStack的topRunningActivityLocked 方法获取要启动的Activity所在栈的栈顶的不是处于停止状态的 ActivityRecord。在注释2处，如果ActivityRecord不为 null，或者要启动的 Activity 的状态不是 RESUMED 状态，就会调用注释3处的ActivityStack 的 resumeTopActivityUncheckedLocked 方法，对于即将启动的 Activity，注释2处的条件判断是肯定满足的,我们来查看 ActivityStack 的resumeTopActivityUncheckedLocked方法，如下所示：
+在注释1处调用ActivityStack的topRunningActivityLocked 方法**获取要启动的Activity所在栈的栈顶的不是处于停止状态的 ActivityRecord**。在注释2处，如果ActivityRecord为 null，或者要启动的 Activity 的状态不是 RESUMED 状态，就会调用注释3处的ActivityStack 的 resumeTopActivityUncheckedLocked 方法，对于即将启动的 Activity，注释2处的条件判断是肯定满足的，我们来查看 ActivityStack 的resumeTopActivityUncheckedLocked方法，如下所示：
 
 frameworks/base/services/core/java/com/android/server/am/ActivityStack.java
 
 ```java
-resumeTopActivityUncheckedLocked(ActivityRecord prev, ActivityOptionsbooleanoptions) {
+boolean resumeTopActivityUncheckedLocked(ActivityRecord prev, ActivityOptionsbooleanoptions) {
     if (mStackSupervisor.inResumeTopActivity) {
         return false;
     }
@@ -2591,17 +2605,21 @@ void startSpecificActivityLocked(ActivityRecord r,boolean andResume， boolean c
             if ((r.info.flags&ActivityInfo.FLAG MULTIPROCESS) == 0 || !"android".equals(r.info.packageName)) {
                app.addPackage(r.info.packageName，r.info.applicationInfo.versionCode,mService.mProcessStats);
             }
+            //如果进程已启动，并且binder句柄IApplicationThread也拿到了，那就直接启动Activity
             realstartActivityLocked(r，app，andResume， checkConfig);//3
             return;
         } catch (RemoteException e) { 
             Slog.w(TAG，"Exception when starting activity "+ r.intent.getComponent().flattenToShortString())，e);
         }
     }
+    //否则，让AMS启动应用程序进程
     mService.startProcessLocked(r.processName,r.info.applicationInf, true, 0, "activity", r.intent.getComponent(), false, false,true);
 }
 ```
 
-在注释1处获取即将启动的 Activity 所在的应用程序进程，在注释2处判断要启动的Activity 所在的应用程序进程如果已经运行的话,就会调用注释3处的realStartActivityLocked方法，这个方法的第二个参数是代表要启动的 Activity 所在的应用程序进程的 ProcessRecord。
+> startProcessLocked方法会调用重载方法，即3.2.1中的startProcessLocked方法
+
+在注释1处获取**即将启动的 Activity 所在的应用程序进程**，在注释2处**判断要启动的Activity 所在的应用程序进程如果已经运行**的话，就会调用注释3处的realStartActivityLocked方法，这个方法的第二个参数是代表要启动的 Activity 所在的应用程序进程的 ProcessRecord。
 
 frameworks/base/services/core/java/com/android/server/am/ActivityStackSupervisor.java
 
@@ -2614,7 +2632,7 @@ final boolean realStartActivityLocked(ActivityRecord r，ProcessRecord appboolea
 }
 ```
 
-这里的 app.thread 指的是 IApplicationThread，它的实现是 ActivityThread 的内部类ApplicationThread，其中 ApplicationThread 继承了IApplicationThread.Stub。app 指的是传入的**要启动的 Activity 所在的应用程序进程**，因此，这段代码指的就是要在目标应用程序进程启动 Activity。当前代码逻辑运行在 AMS 所在的进程(SystemServer 进程)中，通过ApplicationThread来与应用程序进程进行 Binder 通信，换句话说，ApplicationThread是AMS所在进程(SystemServer 进程)和应用程序进程的通信桥梁，如图所示：
+这里的 app.thread 指的是 `IApplicationThread`，它的实现是 ActivityThread 的内部类ApplicationThread，其中 ApplicationThread 继承了IApplicationThread.Stub。`app` 指的是传入的**要启动的 Activity 所在的应用程序进程**，因此，这段代码指的就是要在目标应用程序进程启动 Activity。当前代码逻辑运行在 AMS 所在的进程(SystemServer 进程)中，通过ApplicationThread来与应用程序进程进行 Binder 通信，换句话说，ApplicationThread是AMS所在进程(SystemServer 进程)和应用程序进程的通信桥梁，如图所示：
 
 <img src="./Android进阶解密.assets/image-20231228163829783.png" alt="image-20231228163829783" style="zoom:67%;" />
 
@@ -2626,7 +2644,11 @@ final boolean realStartActivityLocked(ActivityRecord r，ProcessRecord appboolea
 
 <img src="./Android进阶解密.assets/image-20231228164640334.png" alt="image-20231228164640334" style="zoom:67%;" />
 
-接着查看ApplicationThread的scheduleLaunchActivity方法，其中ApplicationThread是ActivityThread的内部类，在3.2.2节中讲过应用程序进程创建后会运行代表主线程的实例ActivityThread，它管理着当前应用程序进程的主线程。ApplicationThread的scheduleLaunchActivity方法如下：
+接着查看ApplicationThread的scheduleLaunchActivity方法，其中**ApplicationThread是ActivityThread的内部类**，在3.2.2节中讲过应用程序进程创建后会运行代表主线程的实例**ActivityThread，它管理着当前应用程序进程的主线程**。
+
+> Zygote启动应用程序进程时，通过fork创建了一个子进程，在进程中创建Binder线程池，通过反射获得了ActivityThread类，将main方法传入的Zygote中的MethodAndArgsCaller类的构造方法，抛出异常然后被Zygote的main方法捕获。
+
+ApplicationThread的scheduleLaunchActivity方法如下：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -2641,11 +2663,11 @@ public final void schedulelaunchActivity(Intent intent，IBinder token，intiden
     r.referrer=referrer;
     ···
     updatePendingConfiguration(curConfig);
-    sendMessage(H.LAUNCH ACTIVITY，r);
+    sendMessage(H.LAUNCH_ACTIVITY，r);
 }
 ```
 
-scheduleLaunchActivity方法将启动Activity的参数封装成ActivityClientRecord，sendMessage方法向H类发送类型为LAUNCH_ACTIVITY的消息，并将ActivityClientRecord传递过去，sendMessage方法有多个重载方法，最终调用的sendMessage方法如下所示：
+scheduleLaunchActivity方法将**启动Activity的参数封装成`ActivityClientRecord`**，sendMessage方法向H类发送类型为LAUNCH_ACTIVITY的消息，并将ActivityClientRecord传递过去，sendMessage方法有多个重载方法，最终调用的sendMessage方法如下所示：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -2665,7 +2687,7 @@ private void sendMessage(int what, Object obj, int argl, int arg2 boolean async)
 }
 ```
 
-这里mH指的是H，它是ActivityThread的内部类并继承自Handler，是应用程序进程中主线程的消息管理类。因为ApplicationThread是一个Binder，它的调用逻辑运行在Binder线程池中，所以这里需要用H将代码的逻辑切换到主线程中。H的代码如下所示：
+这里mH指的是H，它是ActivityThread的内部类并继承自Handler，是应用程序进程中主线程的消息管理类。因为**ApplicationThread是一个Binder**，它的调用逻辑**运行在Binder线程池中**，所以这里需要**用H将代码的逻辑切换到主线程中**。H的代码如下所示：
 
 ```java
 private class H extends Handler {
@@ -2695,3 +2717,161 @@ private class H extends Handler {
 }
 ```
 
+查看H的 handleMessage 方法中对 LAUNCH_ACTIVITY 的处理，在注释1处将传过来的 msg 的成员变量 obj 转换为 `ActivityClientRecord`。在注释2处通过getPackageInfNoCheck 方法获得 `LoadedApk` 类型的对象并赋值给 ActivityClientRecord 的成员变量 `packagelnfo`。应用程序进程要启动 Activity 时需要**将该Activity 所属的APK 加载进来**,而 `LoadedApk`就是**用来描述已加载的APK 文件**的。在注释3处调用 handleLaunchActivity方法，代码如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private void handlelaunchActivity(ActivityClientRecord r，Intent customIntent, String reason) {
+    ···
+    WindowManagerGlobal.initialize();
+    //启动Activity
+    Activity a = performLaunchActivity(r, customIntent);//1
+    if (a!=null) {
+        r.createdConfiq =new Confiquration(mConfiquration);
+        reportSizeConfigurations(r);
+        Bundle oldState =r.state;
+        //将Activity的状态置为 Resume
+        handleResumeActivity(r.token，false,r.isForward!r.activity.mFinished && !r.startsNotResumed,r.lastProcessedSeqreason);//2
+        if (!r.activity.mFinished && r.startsNotResumed) {
+            performPauseActivityIfNeeded(r， reason);
+            if (r.isPreHoneycomb()) {
+                r.state =oldState;
+            }
+        }
+    } else {
+        try {
+            //停止Activity启动
+            ActivityManager.getService()
+                .finishActivity(r.token, Activity.RESULT CANCELED,null,Activity.DONT_FINISH_TASK_WITH_ACTIVITY);
+        } catch (RemoteException ex) {
+            throw ex.rethrowFromSystemServer();
+        }
+    }
+}
+```
+
+注释1处的performLaunchActivity方法用来**启动Activity**，注释2处的代码用来**将Activity的状态设置为Resume**。如果该Activity为null则会通知AMS停止启动Activity。下面来看performLaunchActivity做了什么：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private Activity performLaunchActivity(ActivityClient Record r,Intent customIntent) {
+    //获取ActivityInfo类
+    ActivityInfo aInfo = r.activityInfo;//1
+    if (r.packageInfo== null) {
+        //获取APK文件的描述类 LoadedApk
+        r.packageInfo = getPackageInfo(aInfo.applicationInfo，r.compatInfo, Context.CONTEXT_INCLUDE_CODE);//2
+    }
+    ComponentName component = r.intent.getComponent();//3
+    ···
+    //创建要启动Activity的上下文环境
+    ContextImpl appContext = createBaseContextForActivity(r);//4
+    Activityactivity=null;
+    try {
+        java.lang.ClassLoader cl = appContext.getClassLoader();
+        //用类加载器来创建该Activity的实例
+        activity=mInstrumentation.newActivity(
+cl,component.getClassName(),r.intent);//5
+        ...
+    } catch(Exception e) {
+        ···
+    }
+    try {
+        //创建Application
+        Application app =r.packageInfo.makeApplication(false, mInstrumentation);//6
+        ···
+        if (activity!=null) {
+            ···
+            /**
+             *7 初始化Activity
+             */
+            activity.attach(appContext,this，getInstrumentation(),r.tokenr.ident，app，r.intent，r.activityInfo,title,r.parent,r.embeddedIDr.lastNonConfigurationInstances， config，r.referrer， r.voiceInteractor,window，r.configCallback);
+            ...
+            if (r.isPersistable()) {
+                mInstrumentation.callActivityOnCreate(activity，r.stater.persistentState);//8
+            } else {
+                mInstrumentation.callActivityOnCreate(activity， r.state);
+            }
+            ...
+        }
+        r.paused= true;
+        mActivities.put(r.token,r);
+    } catch (SuperNotCalledException e) {
+        throw e;
+    } catch (Exception e) {
+        ...
+    }
+    return activity;
+}
+```
+
+注释1处用来获取ActivityInfo，用于**存储代码**以及AndroidManifest设置的**Activity和Receiver节点信息，**比如Activity的theme和launchMode。在注释2处获取APK文件的**描述类LoadedApk**。在注释3处获取要启动的Activity的ComponentName类，在ComponentName类中保存了该Activity的**包名和类名**。注释4处用来创建要启动Activity的**上下文环境**。注释5处根据ComponentName中存储的Activity类名，用**类加载器来创建该Activity的实例**。注释6处用来创建Application，makeApplication方法内部会**调用Application的onCreate方法**。注释7处调用Activity的**attach方法初始化Activity**，在attach方法中会**创建Window对象（PhoneWindow）并与Activity自身进行关联**。在注释8处调用Instrumentation的callActivityOnCreate方法来**启动Activity**，如下所示：
+
+frameworks/base/core/java/android/app/Instrumentation.java
+
+```java
+public void callActivityOnCreate(Activity activity,Bundle icicle,PersistableBundle persistentState) {
+    prePerformCreate(activity);
+    activity.performCreate(icicle,persistentState);//1
+    postPerformCreate(activity);
+}
+```
+
+注释1处调用了Activity的performCreate方法：
+
+frameworks/base/core/java/android/app/Activity.java
+
+```java
+final void performCreate(Bundle iciclePersistableBundle persistentState) {
+    restoreHasCurrentPermissionRequest(icicle);
+    onCreate(icicle，persistentState);
+    mActivityTransitionState.readState(icicle);
+    performCreateCommon();
+}
+```
+
+在performCreate方法中会调用Activity的onCreate方法，到这里，根Activity就启动了，即应用程序就启动了。根Activity启动过程就讲到这里。下面来学习根Activity启动过程中涉及的进程。
+
+#### 根Activity启动过程中涉及的进程
+
+根Activity启动过程中会涉及4个进程，分别是Zygote进程、Launcher进程、AMS所在进程（SystemServer进程）、应用程序进程。它们之间的关系如图：
+
+<img src="./Android进阶解密.assets/image-20231229093919512.png" alt="image-20231229093919512" style="zoom:67%;" />
+
+图4-5在图4-3基础上进行了修改，首先Launcher进程向AMS请求创建根Activity，AMS会判断根Activity所需的应用进程是否存在并启动，如果不存在就会请求Zygote进程创建应用程序进程。应用程序进程启动后，AMS会请求创建应用程序进程并启动根Activity。图4-5中步骤2采用的是Socket通信，步骤1和步骤4采用的是Binder通信。下面给出这4个进程调用的时序图：
+
+<img src="./Android进阶解密.assets/image-20231229095938948.png" alt="image-20231229095938948" style="zoom:67%;" />
+
+> ①请求启动根Activity
+>
+> 设置Flag；调用ActivityManager的getService来获取AMS的代理对象，（AIDL通信）最终调用的是AMS的startActivity方法（传了Launcher的applicationthread）。
+>
+> ②请求创建应用程序进程
+>
+> 获得调用者的UserId，AMS根据这个UserId来确定调用者权限；
+> AndroidStarter会收集所有的逻辑来决定如何将Intent和Flags转换为Activity，并将Activity和Task以及Stack相关联；
+> 得到代表Launcher进程的 callerApp ，创建 ActivityRecord，赋值给ActivityRecord[]类型的outActivity；创建一个新的 TaskRecord；
+> 判断要启动的Activity 所在的应用程序进程未启动，执行startProcessLocked；
+> 将应用进程的启动参数保存在argsForZygote中并写入ZygoteState中；与 Zygote 进程建立 Socket 连接。
+>
+> ③创建并启动应用程序进程
+>
+> Socket连接成功并匹配ABI后会返回ZygoteState类型对象，获取argsForZygote；fork创建子进程（应用程序进程）。
+>
+> ④应用程序进程准备就绪
+>
+> 创建Binder线程池；
+>
+> 通过反射获得ActivityThread类和其main方法，将main方法传入MethodAndArgsCaller并抛出异常，会被Zygote的main方法捕获；执行thread.attach告知AMS并回传自己的binder句柄
+>
+> ⑤启动根Activity
+>
+> AMS通过应用程序的ApplicationThread的Binder对象来与应用程序进程进行 Binder 通信；
+> scheduleLaunchActivity方法将启动Activity的参数封装成ActivityClientRecord，sendMessage方法向H类发送类型为LAUNCH_ACTIVITY的消息，并将ActivityClientRecord传递过去；
+>
+> 执行performLaunchActivity来启动Activity。
+>
+> 
+
+如果是普通Activity启动过程会涉及几个进程？答案是两个，AMS所在进程和应用程序进程。实际上理解了根Activity的启动过程（根Activity的onCreate过程），根Activity和普通Activity其他生命周期状态（比如onStart、onResume等）过程也会很轻松掌握，由于篇幅有限这里就不再介绍。
