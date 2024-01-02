@@ -2232,13 +2232,13 @@ ActivityThread类用于管理当前应用程序的主线程，在注释1处**创
 
 Activity、Service、BroadcastReceiver和ContentProvider的工作过程
 
-### 根Activity的启动过程
+### 4.1 根Activity的启动过程
 
 Activity的启动过程分为两种，一种是根Activity的启动过程，另一种是普通Activity的启动过程。根Activity指的是程序启动的第一个Activity，因此根Activity的启动过程一般情况下也可以理解为应用程序的启动过程。普通Activity指的是除应用程序启动的第一个Activity之外的其他Activity。 这里介绍根Activity的启动过程，它和普通Activity的启动过程是有重叠部分的，只不过根Activity的启动过程一般情况下指的是应用程序的启动过程，更具有指导性意义。
 
 根Activity的启动过程比较复杂，因此分为3个部分来讲，分别是Launcher请求AMS过程、AMS到ApplicationThread的调用过程和ActivityThread启动Activity。
 
-#### Launcher请求AMS过程
+#### 4.1.1 Launcher请求AMS过程
 
 在2.4.3节中讲过Launcher启动后会将已安装应用程序的快捷图标显示到桌面上，这些应用程序的快捷图标就是启动根Activity的入口，当我们点击某个应用程序的快捷图标时，就会通过Launcher请求AMS来启动该应用程序。Launcher请求AMS的时序图：
 
@@ -2359,7 +2359,7 @@ getService方法调用了IActivityManagerSingleton的get方法，我们接着往
 
 
 
-#### AMS到ApplicationThread的调用过程
+#### 4.1.2 AMS到ApplicationThread的调用过程
 
 Launcher请求AMS后，代码逻辑已经进入AMS中，接着是AMS到ApplicationThread的调用流程，时序图如图：
 
@@ -2482,7 +2482,7 @@ TaskRecord inTask) {
 
 ActivityStarter 的 startActivity 方法逻辑比较多，这里列出部分我们需要关心的代码在注释1处判断IApplicationThread 类型的 caller 是否为 null，这个 caller 是方法调用一路传过来的，指向的是 **Launcher 所在的应用程序进程的 ApplicationThread 对象**，在注释2处调用AMS的 getRecordForAppLocked 方法得到的是代表 Launcher 进程的 `callerApp` 对象，它是ProcessRecord类型的，**ProcessRecord 用于描述一个应用程序进程**。同样地，ActivityRecord用于描述一个 Activity，用来记录一个 Activity 的所有信息。接下来**创建 ActivityRecord**，**用于描述将要启动的Activity**，并在注释3处将创建的ActivityRecord赋值给ActivityRecord[]类型的`outActivity`，这个 outActivity 会作为注释4处的startActivity 方法的参数传递下去。
 
-frameworks/base/service/core/java/com/android/server/am/ActivityStarter.java
+frameworks/base/services/core/java/com/android/server/am/ActivityStarter.java
 
 ```java
 private int startActivity(final ActivityRecord r,ActivityRecord sourceRecord, IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor, int startFlags, boolean doResume, ActivityOptions options,TaskRecord inTask, ActivityRecord[] outActivity) {
@@ -2638,7 +2638,7 @@ final boolean realStartActivityLocked(ActivityRecord r，ProcessRecord appboolea
 
 
 
-#### ActivityThread启动Activity的过程
+#### 4.1.3 ActivityThread启动Activity的过程
 
 通过4.1.2节的知识，我们知道目前的代码逻辑运行在应用程序进程中。先来看ActivityThread启动Activity过程的时序图，如图所示：
 
@@ -2667,7 +2667,7 @@ public final void schedulelaunchActivity(Intent intent，IBinder token，intiden
 }
 ```
 
-scheduleLaunchActivity方法将**启动Activity的参数封装成`ActivityClientRecord`**，sendMessage方法向H类发送类型为LAUNCH_ACTIVITY的消息，并将ActivityClientRecord传递过去，sendMessage方法有多个重载方法，最终调用的sendMessage方法如下所示：
+scheduleLaunchActivity方法将**启动Activity的参数封装成`ActivityClientRecord`**，sendMessage方法向H类发送类型为 `LAUNCH_ACTIVITY` 的消息，并将ActivityClientRecord传递过去，sendMessage方法有多个重载方法，最终调用的sendMessage方法如下所示：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -2861,7 +2861,7 @@ final void performCreate(Bundle iciclePersistableBundle persistentState) {
 >
 > ④应用程序进程准备就绪
 >
-> 创建Binder线程池；
+> 在应用程序进程中创建Binder线程池；
 >
 > 通过反射获得ActivityThread类和其main方法，将main方法传入MethodAndArgsCaller并抛出异常，会被Zygote的main方法捕获；执行thread.attach告知AMS并回传自己的binder句柄
 >
@@ -2875,3 +2875,730 @@ final void performCreate(Bundle iciclePersistableBundle persistentState) {
 > 
 
 如果是普通Activity启动过程会涉及几个进程？答案是两个，AMS所在进程和应用程序进程。实际上理解了根Activity的启动过程（根Activity的onCreate过程），根Activity和普通Activity其他生命周期状态（比如onStart、onResume等）过程也会很轻松掌握，由于篇幅有限这里就不再介绍。
+
+
+
+### 4.2 Service的启动过程
+
+Service的启动过程和根Activity启动过程有部分相似的知识点，另外Service启动过程涉及上下文Context的知识点，这里只关注流程而不会详细介绍Context，关于上下文Context会在第5章进项介绍。Service的启动过程将分为两个部分来进行讲解，分别是ContextImpl到ActivityManagerService的调用过程和ActivityThread启动Service。
+
+#### 4.2.1 ContextImpl到AMS的调用过程
+
+ContextImpl到AMS的调用过程很简短，如图4-7所示
+
+<img src="./Android进阶解密.assets/image-20240102091204625.png" alt="image-20240102091204625" style="zoom:67%;" />
+
+要启动Service，我们会调用startService方法，它在ContextWrapper中实现，代码如下：
+
+frameworks/base/core/java/android/context/ContextWrapper.java
+
+```java
+public class ContextWrapper extends Context {
+    Context mBase;
+    ···
+    @Override
+    public ComponentName startService(Intent service) {
+        return mBase.startService(service);
+    }
+    ···
+}
+```
+
+在startService方法中会调用 `mBase` 的startService方法，Context类型的mBase对象具体指的是什么呢？4.1.3中我们讲过，ActivityThread启动Activity时会调用如下代码创建Activity的上下文环境：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private Activity performLaunchActivity(ActivityClient Record r,Intent customIntent) {
+    ···
+    //创建要启动Activity的上下文环境
+    ContextImpl appContext = createBaseContextForActivity(r);//1
+        ···
+        if (activity!=null) {
+            ···
+            activity.attach(appContext,this，getInstrumentation(),r.tokenr.ident，app，r.intent，r.activityInfo,title,r.parent,r.embeddedIDr.lastNonConfigurationInstances， config，r.referrer， r.voiceInteractor,window，r.configCallback);
+            ...
+        }
+    ···
+    return activity;
+}
+```
+
+在注释1处**创建上下文对象appContext**，并传入Activity的`attach`方法，**将Activity与上下文对象appContext关联起来**，这个上下文对象appContext的具体类型是什么？我们接着来查看createBaseContextForActivity方法，代码如下：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private ContextImpl createBaseContextForActivity(ActivityClientRecord r) {
+    ···
+    ContextImpl appContext = ContextImpl.createActivityContext(this, r.packageInfo, r.activityInfo, r.token, displayId, r.overrideConfig);
+    ···
+    return appContext;
+}
+```
+
+上下文对象appContext的具体类型就是ContextImpl，在Activity的 `attach` 方法中**将ContextImpl赋值给ContextWrapper的成员变量mBase**，因此，上面提出的问题就得到了解答，mBase具体指向的就是ContextImpl。那么，紧接着来看ContextImpl的startService方法，代码如下：
+
+frameworks/base/core/java/android/app/ContextImpl.java
+
+```java
+@Override
+public ComponentName startService(Intent service) {
+    warnIfCallingFromSystemProcess();
+    return startServiceCommon(service,mUser);
+}
+private ComponentName startServiceCommon(Intent service,boolean requireForeground, UserHandle user) {
+    try {
+        validateService(serivce);
+        service.prepareToLeaveProcess(this);
+        /**
+         * 1
+         */
+        ComponentName cn = ActivityManager.getService(mMainThread.getApplicationThread(), service, service.resolveTypeIfNeeded(getContentResolver()), requireForeground, getOpPackageName(), user.getIdentifier());
+        ···
+        return cn;
+    } catch (RemoteException e) {
+        throw e.rethrowFromSystemServer();
+    }
+}
+```
+
+在startService方法中会返回startServiceCommon方法，在startServiceCommon方法中会在注释1处**调用AMS的代理 `IActivityManager` 的startService方法**，最终调用的是AMS的startService方法，这一过程在4.1.1讲过。
+
+
+
+#### 4.2.2 ActivityThread启动Service
+
+ActivityThread启动Service的时序图如图4-8所示：
+
+<img src="./Android进阶解密.assets/image-20240102093738882.png" alt="image-20240102093738882" style="zoom:67%;" />
+
+接着我们来查看AMS的startService方法，如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+@Override
+public ComponentName startService(IApplicationThread caller, Intent service, String resolvedType, boolean requireForeground, String callingPackage, int userId) throws TransactionTooLargeException {
+    ···
+    synchronized(this) {
+        final int callingPid = Binder.getCallingPid();
+        final int callinqUid = Binder.qetCallinquid();
+        final long origId= Binder.clearCallingIdentity();
+        ComponentName res;
+        try {
+            res = mServices.startServiceLocked(caller， service,resolvedType，callingPid,callingUid,requireForeground, callingPackage,userId);//1
+        } finally {
+            Binder.restoreCallingIdentity(origId);
+        }
+        return res;
+    }
+}
+```
+
+注释1处调用mServices的startServiceLocked方法，mServices的类型是ActiveServices，ActiveServices的startServiceLocked方法代码如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
+
+```java
+ComponentName startServiceLocked(IApplicationThreadcaller，IntentservicerString resolvedTyper
+int callingPid,int callingUid,boolean fgRequired,String callingPackage,final int userId)throws TransactionTooLargeException {
+    ServiceLookupResult res=retrieveServiceLocked(service，resolvedType，callingPackage,callingPid，callinqUid，userId，true，callerFq，false);//1
+    if(res==null) {
+        return null;
+    }
+    if (res.record== null){
+        return new ComponentName("!"res.permission !=null? res.permission :"private to package");
+    }
+    ServiceRecord r = res.record;//2
+    ···
+    ComponentName cmp= startServiceInnerlocked(smap, service, r, callerFg, addToStarting);
+    return cmp;
+}
+```
+
+注释1处的retrieveServiceLocked方法会查找是否有与参数service对应的ServiceRecord，如果没有找到，就会调用PackageManagerServices去获取参数service对应的Service信息，并封装到ServiceRecord中，最后将ServiceRecord封装为ServiceLookupResult返回。其中**`ServiceRecord`用于描述一个Service**，和此前讲过的ActivityRecord类似。在注释2处通过注释1返回的ServiceLookupResult得到参数service对应的ServiceRecord，并传入到注释3处的startServiceInnerLocked方法中。
+
+frameworks/base/services/core/java/com/android/server/am/ActiveService.java
+
+```java
+ComponentName startServiceInnerlocked(ServiceMap smap, Intent service, ServiceRecord r,boolean callerFq, boolean addToStarting) throws TransactionTooLargeException {
+    String error = bringUpServicelocked(r，service.getFlags()，callerFg，false,false);
+    if (error != null) {
+        return new ComponentName("!!"，error);
+    }
+    ···
+    return r.name;
+}
+```
+
+在startServiceInnerLocked方法中又调用了bringUpServiceLocked方法，如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
+
+```java
+private String bringUpServiceLocked(ServiceRecord r, int intentFlags, boolean execInFg，boolean whileRestarting，boolean permissionsReviewRequired) throws TransactionTooLargeException {
+    //获取 Service 想要在哪个进程中运行
+    final String procName = r.processName;//1
+    String hostingType="service";
+    ProcessRecord app;
+    if (!isolated) {
+        app = mAm.getProcessRecordLocked(procName，r.appInfo.uid,false) ;//2
+        if(DEBUG MU) Slog.v(TAG, "brinqUpServiceLocked: appInfo.uid="+r.appInfo.uid+" app=" + app);
+        //如果运行 Service 的应用程序进程存在
+        if (app != null && app.thread != null) {//3
+            try {
+                app.addPackage(r,appInfo.packageName，r.appInfo,versionCode，mAm.mProcessStats);
+                //启动 Service
+                realstartServiceLocked(r， app，execInFg);//4
+                return null;
+            } catch (TransactionTooLargeException e) {
+                throw e;
+            } catch (RemoteException e) {
+                Slog.w(TAG，"Exception when starting service " + r.shortName,e);
+            }
+        }
+    } else {
+        app = r.isolatedProc;
+        if (WebViewZygote.isMultiprocessEnabled()
+&& r.serviceInfo.packageName,equals (WebViewZygote,getPackageName())) {
+            hostingType ="webview service";
+        }
+    }
+    //如果用来运行 Service 的应用程序进程不存在
+    if (app == null && !permissionsReviewRequired) {//5
+        //创建应用程序进程
+        if ((app=mAm.startProcessLocked(procName，r.appInfo,trueintentFlagshostingType，r.name，false，isolated,false)) == null) {//6
+            String msg="Unable to launch app"
+                + r.appInfo.packageName +"/u"
+                + r.appInfo.uid +" for service "
+                + r.intent.getIntent() +": process is bad";
+            Slog.w(TAG,msg);
+            bringDownServiceLocked(r);
+            return msg;
+        }
+        if (isolated) {
+            r.isolatedProc =app;
+        }
+    }
+    ...
+    return null;
+}
+```
+
+在注释1处得到ServiceRecord的processName值并赋给`procName`，其中processName用来描述 Service 想要在哪个进程中运行，**默认是当前进程**，我们也可以在 AndroidManifest文件中设置 android:process 属性来新开启一个进程运行 Service。在注释 2 处将 procName和 Service 的 uid **传到 AMS 的 getProcessRecordLocked 方法中**，查询是否存在一个与 Service 对应的 `ProcessRecord` 类型的对象 app.ProcessRecord 主要用来描述运行的应用程序进程的信息。在注释 5 处**判断 Service 对应的 app 为 null 则说明用来运行 Service 的应用程序进程不存在**，则调用注释6处的 AMS 的 startProcessLocked 方法来**创建对应的应用程序进程**，关于创建应用程序进程请查看第 3 章的内容，这里只讨论没有设置 android:process属性，即应用程序进程存在的情况。在注释 3 处判断如果用来运行 Service 的应用程序进程存在，则调用注释4处的 realStartServiceLocked 方法来启动 Service：
+
+frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
+
+```java
+private final void realStartServiceLocked(ServiceRecord r,ProcessRecord app， boolean execInFg) throws RemoteException {
+    ···
+    try {
+        ...
+        app.thread.scheduleCreateService(r， r.serviceInfo,mAm.compatibilityInfoForPackageLocked(r.serviceInfo.applicationInfo),app.repProcState);
+        r.postNotification();
+        created = true;
+    } catch (DeadObjectException e) {
+        Slog.w(TAG，"Application dead when creating service "+ r);
+        mAm.appDiedLocked(app);
+        throw e;
+    } finally {
+        ...
+    }
+    ···
+}
+```
+
+在 realStartServiceLocked 方法中调用了 app.thread 的 scheduleCreateService 方法。其中 app.thread 是 `IApplicationThread` 类型的，它的实现是 ActivityThread 的内部类ApplicationThread。ApplicationThread 的 scheduleCreateService 方法如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+public final void scheduleCreateService(IBinder token,ServiceInfo info, CompatibilityInfo compatInfo,int processState) {
+    updateProcessState(processState, false);
+    CreateServiceData s = new CreateServiceData();
+    s.token =token;
+    s.info =info;
+    s.compatInfo = compatInfo;
+    sendMessage(H.CREATE_SERVICE，s);
+}
+```
+
+scheduleCreateService 方法**将启动 Service 的参数封装成`CreateServiceData`**，sendMessage 方法向H类发送类型为`CREATE_SERVICE` 的消息，并将CreateServiceData传递过去，这个过程和 4.1.3 节 ActivityThread 启动 Activity 的过程是类似的。sendMessage方法有多个重载方法，最终调用的 sendMessage 方法如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private void sendMessage(int what, Object obj, int arg1,int arg2, boolean async) {
+    if (DEBUG MESSAGES) Slog.v(TAG, "SCHEDULE n" + what + " " + mH.codeToString(what) +":"+arg1+"/"+ obj);
+    Message msg = Message.obtain();
+    msg.what = what;
+    msg.obj= obj;
+    msg.arg1 =arg1;
+    msg.arg2=arg2;
+    if (async) {
+        msg.setAsynchronous(true);
+    }
+    mH.sendMessage(msg);
+}
+```
+
+这里mH指的是H，它是ActivityThread的内部类并继承自Handler，是应用程序进程中主线程的消息管理类。我们查看H的handleMessage方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private class H extends Handler {
+    public static final int LAUNCH ACTIVITY=100;
+    public static final int PAUSE ACTIVITY= 101;
+···
+public void handleMessage(Message msg) {
+    if (DEBUG MESSAGES) Slog.v(TAG，">>>handling:"+ codeToString(msg.what));
+    switch (msq.what) {
+    ...
+        case CREATE_SERVICE:
+            Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,("serviceCreate: "+ String.valueOf(msg.obj)));
+            handleCreateService((CreateServiceData)msg.obj);
+            Trace.traceEnd(Trace.TRACE TAG ACTIVITY MANAGER);
+            break;
+    ···
+    }
+    ···
+}
+```
+
+handleMessage方法根据消息类型为CREATE_SERVICE，会调用handleCreateService方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private void handleCreateService(CreateServiceData data) {
+    unscheduleGcIdler();
+    //获取要启动 Service 的应用程序的 LoadedApk
+    LoadedApk packageInfo = getPackageInfoNoCheck(data.info.applicationInfo， data.compatInfo);//1
+    Service service=null;
+    try {
+        //获取类加载器
+        java.lang.ClassLoader cl = packageInfo.getClassLoader();//2
+        //创建Service实例
+        service = (Service) cl.loadClass(data.infoname).newInstance();//3
+    } catch (Exception e) {
+        ···
+    }
+    try {
+        if (localLOGV) Slog.V(TAG，"Creating service " + data.info.name);
+        //创建 Service 的上下文环境 ContextImpl 对象
+        ContextImpl context = ContextImpl.createAppContext(this，packageInfo);//4
+        context.setOuterContext(service);
+        Application app = packageInfo.makeApplication(false，mInstrumentation);
+        //初始化 Service
+        service.attach(context， this， data.info.name, data.token, app,
+                       ActivityManager.getService());//5
+        service.onCreate();//6
+        mServices.put(data.token， service);//7
+        try {
+            ActivityManager.getService().serviceDoneExecuting(data.token，SERVICE DONE EXECUTING ANON，0，0);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    } catch (Exception e) {
+        ···
+    }
+}
+```
+
+在注释1处获取要启动Service的应用程序的LoadedApk，LoadedApk是一个APK文件的描述类。在注释2处通过调用LoadedApk的getClassLoader方法来获取类加载器。接着在注释3处根据CreateServiceData对象中存储的Service信息，创建Service实例。在注释3处根据CreateServiceData对象中存储的Service信息，**创建Service实例**。在注释4处创建Service的上下文环境ContextImpl对象。在注释5处通过Service的attach方法来初始化Service。在注释6处调用Service的 `onCreate` 方法，这样Service就**启动**了。在注释7处**将启动的Service加入到ActivityThread的成员变量mServices中**，其中mServices是ArrayMap类型。Service的启动过程就讲到这里，接下来我们学习Service的绑定过程。
+
+
+
+### 4.3 Service的绑定过程
+
+我们可以通过Context的startService来启动Service，也可以通过Context的bindService来绑定Service，绑定Service的过程比启动Service的过程复杂一些，结合着Service启动过程会有更好的理解。Service的绑定过程将分为两个部分来进行讲解，分别是ContextImpl到AMS的调用过程和Service的绑定过程。
+
+#### 4.3.1 ContextImpl 到 AMS 的调用过程
+
+ContextImpl到AMS的过程如图4-9所示。
+
+<img src="./Android进阶解密.assets/image-20240102112659602.png" alt="image-20240102112659602" style="zoom:67%;" />
+
+我们可以用bindService方法来绑定Service，它在ContextWrapper中实现，代码如下：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+
+```java
+@Override
+public boolean bindService(Intent service, ServiceConnection conn, int flags) {
+    return mBase.bindService(service,conn,flags);
+}
+```
+
+在4.2.1节我们得知mBase具体就是指向ContextImpl的，接着查看ContextImpl的bindService方法：
+
+frameworks/base/core/java/android/app/ContextImpl.java
+
+```java
+@Override
+public boolean bindService(Intent service, ServiceConnection conn, int flags) {
+    warnIfCallFromSystemProcess();
+    return bindServiceCommon(service,conn,flags,mMainThread.getHandler());
+}
+```
+
+在bindService方法中，又返回了bindServiceCommon方法，代码如下所示：
+
+frameworks/base/core/java/android/app/ContextImpl.java
+
+```java
+private boolean bindServiceCommon (Intent service, ServiceConnection conn, int flags, Handler handler, UserHandler user) {
+    IServiceConnection sd;
+    if (conn==null) {
+        throw new IllegalArgumentException("connection is null");
+    }
+    if (mPackageInfo!=null) {
+        sd = mPackageInfo.getServiceDispatcher(conn, getOuterContext(), handler,flags);//1
+    } else {
+        throw new RuntimException("Not supported in system context");
+    }
+    validateServiceIntent(service);
+    try {
+        /**
+         * 2
+         */
+        int res = ActivityManager.getService().bindService(mMainThread.getApplicationThread(),getActivityToken(),service, service.resolveTypeIfNeeded(getContentResolver()),sd,flags,getOpPackageName()user.getIdentifier());
+        if (res <0){
+            throw new SecurityException(
+"Not allowed to bind to service " + service);
+            return res != 0;
+        }
+    } catch (RemoteException e) {
+        throw e.rethrowFromSystemServer();
+    }
+}
+```
+
+在注释1处调用了LoadedApk类型的对象mPackageInfo的getServiceDispatcher方法，它的主要作用是将ServiceConnection封装为IServiceConnection类型的对象sd，从IServiceConnection的名字我们就能得知它实现了Binder机制，这样Service的绑定就支持了跨进程。接着在注释2处我们又看见了熟悉的代码（getService()得到AMS代理），最终会调用AMS的bindService方法。
+
+#### 4.3.2 Service的绑定过程
+
+AMS的bindService方法代码如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+public int bindService(IApplicationThread caller，IBinder tokenIntent service,String resolvedType, IServiceConnection connection, int flags,StringcallingPackage，int userId) throws TransactionTooLargeException {
+    enforceNotIsolatedCaller("bindService");
+    if(service != null && service.hasFileDescriptors() == true) {
+        throw new IllegalArqumentException("File descriptors passed in Intent");
+    }
+    if (callingPackaqe == null) {
+        throw new IllegalArgumentException("callingPackage cannot be null");
+    }
+    synchronized(this) {
+        return mServices.bindServiceLocked(caller token, service,resolvedType，connection， flags，callingPackage，userId);
+    }
+}
+```
+
+bindService方法最后会调用ActiveServices类型的对象mServices的bindServiceLocked方法：
+
+frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
+
+```java
+int bindServiceLocked(IApplicationThread caller，IBinder token， Intent service,final IServiceConnection connection, int flags,String resolvedType，String callingPackage,final int userId) throws TransactionTooLargeException {
+    ...
+    try {
+        ...
+        AppBindRecord b= s.retrieveAppBindingLocked(service， callerApp);//1
+        ...
+        if ((flags&Context.BIND AUTO CREATE) != 0) {
+            s.lastActivity = SystemClock.uptimeMillis();
+            //启动 Service
+            if (bringUpServiceLocked(s， service.getFlags(), callerFg, falserpermissionsReviewRequired) != null) {//2
+                return 0;
+            }
+        }
+        ...
+        if (s.app != null && b.intent.received) {//3
+            try {
+                c.conn.connected(s.name， b.intent.binder， false);//4
+            } catch (Exception e){
+                Slog.w(TAG，"Failure sending service " +s.shortName
+                       +" to connection " +c.conn.asBinder()
+                       + " (in " + c.binding.client.processName +")",e);
+            }
+            if (b.intent.apps.size() == 1 && b.intent.doRebind) {//5
+                requestServiceBindingLocked(s，b.intent，callerFq， true);//6
+            } 
+        } else if(!b.intent.requested) {//7
+            requestServiceBindingLocked(s，b.intent， callerFg， false);//8
+        }
+        getServiceMapLocked(s.userId),ensureNotStartingBackgroundlocked(s);
+    } finally {
+        Binder.restoreCallingIdentity(origId);
+    }
+    return l;
+}
+```
+
+讲到这里，有必要先介绍几个与Service相关的对象类型，这样有助于对源码进行理解，如下所示：
+
++ ServiceRecord：用于描述一个Service
++ ProcessRecord：一个进程的信息
++ ConnectionRecord：用于描述应用程序进程和Service建立的一次通信
++ AppBindRecord：应用程序进程通过Intent绑定Service时，会通过AppBindRecord来维护Service与应用程序进程之间的关联。其内部存储了谁绑定的Service（ProcessRecord）、被绑定的Service（ServiceRecord）、绑定Service的Intent（IntentBindRecord）和所有绑定通信记录的信息（ArraySet\<ConnectionRecord\>）。
++ IntentBindRecord：用于描述绑定Service的Intent
+
+在注释1处调用了ServiceRecord的retrieveAppBindingLocked方法来获得AppBindRecord，retrieveAppBindingLocked方法内部创建IntentBindRecord，并对IntentBindRecord的成员变量进行赋值，后面会详细介绍这个关键的方法。
+
+在注释2处调用bringUpServiceLocked方法，在bringUpServiceLocked方法中有调用realStartServiceLocked方法，最终由ActivityThread来调用Service的onCreate方法启动Service，这也说明了 bindService 方法内部会启动 Service，启动 Service 这一过程在 4.2.2节中已经讲过，这里不再赘述。在注释 3 处 `s.app!=null` 表示 Service 已经运行，其中s是ServiceRecord类型对象，app 是 ProcessRecord 类型对象。b.intent.received 表示当前应用程序进程已经接收到绑定 Service 时返回的 Binder，这样应用程序进程就可以通过 Binder 来获取要绑定的 Service 的访问接口。在注释 4 处调用c.conn 的 connected 方法，其中 c.conn 指的是 IServiceConnection，它的具体实现为 ServiceDispatcherInnerConnection，其中ServiceDispatcher 是 LoadedApk 的内部类，InnerConnection 的 connected 方法内部会调用H的 post 方法向主线程发送消息，并且解决当前应用程序进程和 Service 跨进程通信的问题在后面会详细介绍这一过程。在注释 5 处如果当前应用程序进程是第一个与 Service 进行绑定的，并且 Service 已经调用过 onUnBind 方法，则需要调用注释6处的代码。在注释7处如果应用程序进程的 Client 端没有发送过绑定 Service 的请求，则会调用注释8处的代码，注释8处和注释6处的代码区别就是最后一个参数 rebind 为 false，表示不是重新绑定。接着我们查看注释6处的 requestServiceBindingLocked 方法，代码如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
+
+```java
+private final boolean requestServiceBindinglocked(ServiceRecord r,IntentBindRecord i.boolean execInFq，boolean rebind) throws TransactionTooLargeException {
+    if ((!i.requested Il rebind) && i.apps.size() > 0) {//1
+        try {
+            bumpServiceExecutingLocked(r，execInFg，"bind");
+            r.app.forceProcessStateUpTo(ActivityManager.PROCESS STATE SERVICE);
+            r.app.thread.scheduleBindService(r，i.intent.getIntent(), rebind, r.app.repProcState);//2
+            if (!rebind){
+                i.requested =true;
+            }
+            i.hasBound=true;
+            i.doRebind = false;
+        } catch (TransactionTooLargeException e) {
+            ...
+    }
+    return true;
+}
+```
+
+注释1处 i.requested 表示是否发送过绑定 Service 的请求，从 bindServiceLocked 方法的注释 5 处得知是发送过的，因此，`!i.requested` 为 false。从 bindServiceLocked 方法的注释5处得知 rebind值为 true，那么(!i.requested] rebind)的值为 true。`i.apps.size()>0`表示什么呢?其中i是 IntentBindRecord 类型的对象，AMS会为每个绑定 Service 的 Intent 分配一个IntentBindRecord 类型对象，代码如下所示:
+
+frameworks/base/services/core/java/com/android/server/am/IntentBindRecord.java
+
+```java
+final class IntentBindRecord {
+    //被绑定的Service
+    final ServiceRecord service;
+    //绑定Service的Intent
+    final Intent.FilterComparison intent;
+    //所有用当前Intent绑定Service的应用程序进程
+    final ArrayMap<ProcessRecord,AppBindRecord> apps = new ArrayMap<ProcessRecord,AppBindRecord>();//1
+    ···
+}
+```
+
+我们来查看IntentBindRecord类，不同的应用程序进程可能使用同一个Intent来绑定Service，因此在注释1处会用apps来存储所有当前Intent绑定Service的应用程序进程。`i.apps.size()>0`表示所有用当前Intent绑定Service的应用程序进程个数大于0，下面来验证 `i.apps.size()>0` 是否为true。我们回到bindServiceLocked方法的注释1处，ServiceRecord的retrieveAppBindingLocked方法如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ServiceRecord.java
+
+```java
+public AppBindRecord retrieveAppBindingLocked(Intent intent,ProcessRecord app) {
+    Intent.FilterComparison filter = new Intent,FilterComparison(intent);
+    IntentBindRecord i = bindings.get(filter);
+    if (i==null) {
+        i = new IntentBindRecord(this， filter);//1
+        bindings.put(filter, i);
+    }
+    AppBindRecord a=i.apps.get(app);//2
+    if (a!=null){
+        return a;
+    }
+    a=new AppBindRecord(this，i，app);//3
+    i.apps.put(app，a);
+    return a;
+}
+```
+
+注释1处创建了IntentBindRecord，注释2处根据ProcessRecord获得IntentBindRecord中存储的AppBindRecord，如果AppBindRecord不为null就返回，如果为null就在注释3处创建AppBindRecord，并将ProcessRecord作为key，AppBindRecord作为value保存在IntentBindRecord的apps(i.apps)中。回到requestServiceBindingLocked方法的注释1处，结合ServiceRecord的retrieveAppBindingLocked方法，我们得知`i.app.size()>0`为true，这样就会调用注释2处的代码，r.app.thread的类型为IApplicationThread，它的实现我们已经很熟悉了，是ActivityThread的内部类ApplicationThread，scheduleBindService方法如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+public final void schedule(IBinder token, Intent intent, boolean rebind, int processState) {
+    updateProcessState(processState,false);
+    BindServiceData s =new BindServiceData();
+    s.token = token;
+    s.intent = intent;
+    s.rebind = rebind;
+    if (DEBUG_SERVICE)
+        Slog.v(TAG，"scheduleBindService token=" + token + " intent=" + intent + "uid=" + Binder.getCallinguid() +"pid=" + Binder.getCallingPid());
+    sendMessage(H.BIND_SERVICE, s);
+}
+```
+
+首先将Service的信息封装成BindServiceData对象，BindServiceData的成员变量rebind的值为false，后面会用到它。接着将BindServiceData传入到sendMessage方法中。sendMessage向H发送消息，我们接着查看H的handleMessage方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private void handleBindService(BindServiceData data) {
+    Service s = mServices.get(data.token);//1
+    if (DEBUG_SERVICE)
+        Slog.v(TAG，"handleBindService s="+s+"rebind=" + data.rebind);
+    if (s != null) {
+        try {
+            data.intent.setExtrasClassLoader(s.getClassLoader());
+            data.intent.prepareToEnterProcess();
+            try {
+                if (!data.rebind) {//2
+                    IBinder binder = s.onBind(data.intent);//3
+                    ActivityManager.getService().publishService(data.token，data.intent, binder);//4
+                } else {
+                    s.onRebind(data.intent);//5
+                    ActivityManager.getService().serviceDoneExecuting(data.token，SERVICE_DONE_EXECUTING ANON，0，0);
+                }
+                ensureJitEnabled();
+            } catch (RemoteException ex) {
+                    throw ex.rethrowFromSystemServer();
+            }
+        } catch (Exception e) {
+            if (!mInstrumentation.onException(s, e)) {
+                throw new RuntimeException("Unable to bind to service"+s+" with"+data.intent +":"+e.toString(),e);
+            }
+        }
+    }
+}
+```
+
+在注释1处获取要绑定的Service。注释2处的BindServiceData的成员变量rebind的值为false，这样会调用注释3处的代码来调用Service的onBind方法，到这里Service处于绑定状态了。如果rebind的值为true就会调用注释5处的Service的onRebind方法，这一点结合前文的bindServiceLocked方法的注释5处，得出的结论就是：如果当前应用程序进程第一个与Service进行绑定，并且Service已经调用过onUnBind方法，则会调用Service的onRebind方法。handleBindService方法有两个分支，一个是绑定过Service的情况，另一个是未绑定的情况，这里分析未绑定的情况，查看注释4处的代码，实际上是调用AMS的publishService方法。讲到这里，先给出这一部分的代码时序图（不包括Service启动过程），如图4-10所示。
+
+<img src="./Android进阶解密.assets/image-20240102143808408.png" alt="image-20240102143808408" style="zoom:67%;" />
+
+
+
+接着来查看AMS的publishService方法，代码如下所示：
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+public void publishService(IBinder token, Intent intent，IBinder service) {
+    if (intent != null && intent.hasFileDescriptors() == true) {
+        throw new IllegalArgumentException("File descriptors passed in Intent");
+    }
+    synchronized(this) {
+        if (!(token instanceof ServiceRecord)) {
+            throw new IllegalArgumentException("Invalid service token");
+        }
+        mServices.publishServiceLocked((ServiceRecord)token，intent，service);
+    }
+}
+```
+
+在publishService方法中调用了ActiveServices类型的mServices对象的publishServiceLocked方法：
+
+frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
+
+```java
+void publishServiceLocked(ServiceRecord r，Intent intent，IBinder service) {
+    final long origId = Binder.clearCallingIdentity();
+    try {
+        ···
+        for (int conni=r.connections.size()-l; conni>=0; conni--){
+            ...
+                	try {
+                    	c.conn.connected(r.name， service， false);//1
+                	} catch (Exception e)  {
+                    	Slog.w(TAG，"Failure sending service " + r.name + " to connection "+c.conn.asBinder() +"(in" + c.binding.client.processName +")",e);
+                	}
+        		}
+    		}
+		}
+		seviceDoneExecutingLocked(r,mDestroyingServices.contains(r),false);
+		}
+	} finally {
+    	Binder.restoreCallingIdentity(originId);
+	}
+}
+```
+
+注释1处的代码在前面介绍过，c.conn指的是IServiceConnection，它是ServiceConnection在本地的代理，用于解决当前应用程序进程和Service夸进程通信的问题，具体实现为ServiceDispatcher.InnerConnection，其中ServiceDispatcher是LoadedApk的内部类，ServiceDispatcher.InnerConnection的connected方法的代码如下所示：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+static final class ServiceDispatcher {
+    ···
+        private static class InnerConnection extends IServiceConnection.Stub {
+            final WeakReference<LoadedApk.ServiceDispatcher> mDispatcher;
+            InnerConnection(LoadedApk.ServiceDispatcher sd) {
+                mDispatcher = new WeakReference<LoadedApk.ServiceDispatcher>(sd);
+            }
+            public void connected(ComponentName name, IBinder service) throws RemoteException {
+                LoadedApk.ServiceDispatcher sd = mDispatcher.get();
+                if (sd !=null){
+                    sd.connected(name， service) ;//1
+                }
+            }
+        }
+    ···
+}
+```
+
+在注释1处的代码在前面介绍过，c.conn 指的是IServiceConnection，它是ServiceConnection在本地的代理，用于解决当前应用程序进程和Service跨进程通信的问题，具体实现为ServiceDispatcher.InnerConnection，其中ServiceDispatcher是LoadedApk的内部类，ServiceDispatcher.InnerConnection的connected方法的代码如下所示：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+public void connected(ComponentName name, IBinder services, boolean dead) {
+    if (mActivityThread != null) {
+        mActivityThread.post(new RunnConnection(name,service,0,dead));//1
+    } else {
+        doConnected(name,service,dead);
+    }
+}
+```
+
+在注释1处调用Handler类型的对象mActivityThread的post方法，mActivityThread实际上指向的是H。因此，通过调用H的post方法将RunConnection对象的内容运行在主线程中。RunConnection是LoadedApk的内部类，定义如下所示：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+private final class RunConnection implements Runnable {
+    RunConnection(ComponentName name, IBinder service, int command, boolean dead) {
+        mName = name;
+        mService = service;
+        mCommand = command;
+        mDead = dead;
+    }
+    public void run() {
+        if(mCommand==0) {
+            doConnected(mName,mService,mDead);
+        } else if (mCommand==1) {
+            doDeath(mName,mService);
+        }
+    }
+    final ComponentName mName;
+    final IBinder mService;
+    final int mCommand;
+    final boolean mDead;
+}
+```
+
+在RunConnection的run方法中调用了doConnection方法：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+public void doConnected(ComponentName name， IBinder service，boolean dead) {
+    ...
+    if (old!=null){
+        mConnection.onServiceDisconnected(name);
+    } if (dead) {
+        mConnection.onBindingDied(name);
+    } if (service !=null) {
+        mConnection.onServiceConnected(name,service);//1
+    }
+```
+
+在注释1处调用了ServiceConnection类型的对象mConnection的onServiceConnected方法，这样在客户端实现了ServiceConnection接口类的onServiceConnected方法就会被执行。至此，Service的绑定过程就分析完成。最后给出剩余部分的代码时序图，如图4-11所示。
+
+<img src="./Android进阶解密.assets/image-20240102152538619.png" alt="image-20240102152538619" style="zoom:67%;" />
+
+
+
+
+
+
+
