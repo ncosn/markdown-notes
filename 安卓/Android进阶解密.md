@@ -3045,7 +3045,9 @@ private String bringUpServiceLocked(ServiceRecord r, int intentFlags, boolean ex
     if (!isolated) {
         app = mAm.getProcessRecordLocked(procName，r.appInfo.uid,false) ;//2
         if(DEBUG MU) Slog.v(TAG, "brinqUpServiceLocked: appInfo.uid="+r.appInfo.uid+" app=" + app);
-        //如果运行 Service 的应用程序进程存在
+        //如果运行 Service 的应用程序进程存在，并且其ApplicationThread也存在
+        //说明服务已启动，因为在启动服务时会给ServiceRecord.app赋值，并且app.thread不为null说明进程没有被杀死
+        //此时直接拉起Service.onStartCommand方法
         if (app != null && app.thread != null) {//3
             try {
                 app.addPackage(r,appInfo.packageName，r.appInfo,versionCode，mAm.mProcessStats);
@@ -3069,6 +3071,7 @@ private String bringUpServiceLocked(ServiceRecord r, int intentFlags, boolean ex
     if (app == null && !permissionsReviewRequired) {//5
         //创建应用程序进程
         if ((app=mAm.startProcessLocked(procName，r.appInfo,trueintentFlagshostingType，r.name，false，isolated,false)) == null) {//6
+            //如果启动进程失败，停止服务
             String msg="Unable to launch app"
                 + r.appInfo.packageName +"/u"
                 + r.appInfo.uid +" for service "
@@ -3154,7 +3157,7 @@ private class H extends Handler {
 ···
 public void handleMessage(Message msg) {
     if (DEBUG MESSAGES) Slog.v(TAG，">>>handling:"+ codeToString(msg.what));
-    switch (msq.what) {
+    switch (msg.what) {
     ...
         case CREATE_SERVICE:
             Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,("serviceCreate: "+ String.valueOf(msg.obj)));
@@ -3310,7 +3313,7 @@ int bindServiceLocked(IApplicationThread caller，IBinder token， Intent servic
         ...
         AppBindRecord b= s.retrieveAppBindingLocked(service， callerApp);//1
         ...
-        if ((flags&Context.BIND AUTO CREATE) != 0) {
+        if ((flags&Context.BIND_AUTO_CREATE) != 0) {
             s.lastActivity = SystemClock.uptimeMillis();
             //启动 Service
             if (bringUpServiceLocked(s， service.getFlags(), callerFg, falserpermissionsReviewRequired) != null) {//2
@@ -3345,18 +3348,22 @@ int bindServiceLocked(IApplicationThread caller，IBinder token， Intent servic
 + ServiceRecord：用于描述一个Service
 + ProcessRecord：一个进程的信息
 + ConnectionRecord：用于描述应用程序进程和Service建立的一次通信
-+ AppBindRecord：应用程序进程通过Intent绑定Service时，会通过AppBindRecord来维护Service与应用程序进程之间的关联。其内部存储了谁绑定的Service（ProcessRecord）、被绑定的Service（ServiceRecord）、绑定Service的Intent（IntentBindRecord）和所有绑定通信记录的信息（ArraySet\<ConnectionRecord\>）。
-+ IntentBindRecord：用于描述绑定Service的Intent
++ AppBindRecord：应用程序进程通过Intent绑定Service时，会通过AppBindRecord来维护**Service与应用程序进程之间的关联**。其内部存储了谁绑定的Service（ProcessRecord）、被绑定的Service（ServiceRecord）、绑定Service的Intent（IntentBindRecord）和所有绑定通信记录的信息（ArraySet\<ConnectionRecord\>）。
++ IntentBindRecord：用于描述绑定Service的Intent（存储了AppBindRecord（value），key是ProcessRecord）
 
 在注释1处调用了ServiceRecord的retrieveAppBindingLocked方法来获得AppBindRecord，retrieveAppBindingLocked方法内部创建IntentBindRecord，并对IntentBindRecord的成员变量进行赋值，后面会详细介绍这个关键的方法。
 
-在注释2处调用bringUpServiceLocked方法，在bringUpServiceLocked方法中有调用realStartServiceLocked方法，最终由ActivityThread来调用Service的onCreate方法启动Service，这也说明了 bindService 方法内部会启动 Service，启动 Service 这一过程在 4.2.2节中已经讲过，这里不再赘述。在注释 3 处 `s.app!=null` 表示 Service 已经运行，其中s是ServiceRecord类型对象，app 是 ProcessRecord 类型对象。b.intent.received 表示当前应用程序进程已经接收到绑定 Service 时返回的 Binder，这样应用程序进程就可以通过 Binder 来获取要绑定的 Service 的访问接口。在注释 4 处调用c.conn 的 connected 方法，其中 c.conn 指的是 IServiceConnection，它的具体实现为 ServiceDispatcherInnerConnection，其中ServiceDispatcher 是 LoadedApk 的内部类，InnerConnection 的 connected 方法内部会调用H的 post 方法向主线程发送消息，并且解决当前应用程序进程和 Service 跨进程通信的问题在后面会详细介绍这一过程。在注释 5 处如果当前应用程序进程是第一个与 Service 进行绑定的，并且 Service 已经调用过 onUnBind 方法，则需要调用注释6处的代码。在注释7处如果应用程序进程的 Client 端没有发送过绑定 Service 的请求，则会调用注释8处的代码，注释8处和注释6处的代码区别就是最后一个参数 rebind 为 false，表示不是重新绑定。接着我们查看注释6处的 requestServiceBindingLocked 方法，代码如下所示：
+在注释2处调用bringUpServiceLocked方法，在bringUpServiceLocked方法中有调用 `realStartServiceLocked` 方法，最终由ActivityThread来调用Service的onCreate方法（handleXXX方法）启动Service，这也说明了 **bindService 方法内部会启动 Service**，启动 Service 这一过程在 4.2.2节中已经讲过，这里不再赘述。在注释 3 处 `s.app!=null` 表示 Service 已经运行，其中s是ServiceRecord类型对象，app 是 ProcessRecord 类型对象。b.intent.received 表示**当前应用程序进程已经接收到绑定 Service 时返回的 Binder**，这样应用程序进程就可以**通过 Binder 来获取要绑定的 Service 的访问接口**。
+
+> 在 Service 的代码中，你需要重写 `onBind()` 方法。这个方法的返回类型是 IBinder，它通常返回一个 Binder 对象，用于建立客户端与 Service 之间的通信桥梁。
+
+在注释 4 处调用c.conn 的 connected 方法，其中 c.conn 指的是 IServiceConnection，它的具体实现为 ServiceDispatcher.InnerConnection，其中ServiceDispatcher 是 LoadedApk 的内部类，InnerConnection 的 connected 方法内部会调用H的 post 方法向主线程发送消息，并且解决当前应用程序进程和 Service 跨进程通信的问题，在后面会详细介绍这一过程。在注释 5 处**如果当前应用程序进程是第一个与 Service 进行绑定的，并且 Service 已经调用过 onUnBind 方法，则需要调用注释6处的代码**。在注释7处**如果应用程序进程的 Client 端没有发送过绑定 Service 的请求，则会调用注释8处的代码**，注释8处和注释6处的代码**区别就是最后一个参数 rebind 为 false**，表示不是重新绑定。接着我们查看注释6处的 requestServiceBindingLocked 方法，代码如下所示：
 
 frameworks/base/services/core/java/com/android/server/am/ActiveServices.java
 
 ```java
 private final boolean requestServiceBindinglocked(ServiceRecord r,IntentBindRecord i.boolean execInFq，boolean rebind) throws TransactionTooLargeException {
-    if ((!i.requested Il rebind) && i.apps.size() > 0) {//1
+    if ((!i.requested || rebind) && i.apps.size() > 0) {//1
         try {
             bumpServiceExecutingLocked(r，execInFg，"bind");
             r.app.forceProcessStateUpTo(ActivityManager.PROCESS STATE SERVICE);
@@ -3373,7 +3380,21 @@ private final boolean requestServiceBindinglocked(ServiceRecord r,IntentBindReco
 }
 ```
 
-注释1处 i.requested 表示是否发送过绑定 Service 的请求，从 bindServiceLocked 方法的注释 5 处得知是发送过的，因此，`!i.requested` 为 false。从 bindServiceLocked 方法的注释5处得知 rebind值为 true，那么(!i.requested] rebind)的值为 true。`i.apps.size()>0`表示什么呢?其中i是 IntentBindRecord 类型的对象，AMS会为每个绑定 Service 的 Intent 分配一个IntentBindRecord 类型对象，代码如下所示:
+注释1处 i.requested 表示是否发送过绑定 Service 的请求，从 bindServiceLocked 方法的注释 5 处得知是发送过的，因此，`!i.requested` 为 false。从 bindServiceLocked 方法的注释5处得知 rebind值为 true，那么`(!i.requested||rebind)`的值为 true。
+
+> 首次绑定，i.requested为false，应用程序进程的 Client 端没有发送过绑定 Service 的请求，rebind为false，执行`i.requested =true`；
+>
+> 在 `handleMessage()` 方法中收到 `MSG_REBIND` 消息时调用 `handleRebind()` 方法，将`doRebind` 设置为 `true`，也就是说执行了`onUnBind`方法。
+>
+> 非首次绑定，
+
+> 当Activity退出的时候，Sercvice并不会停止，此时我们可以再进入Activity重新绑定，当这时候 Service就会调用onRebind()方法，但是调用onRebind()方法的前提是先前的onUnbind()方法执行成功，但是使用 super.onUnbind(intent)是执行不成功的，
+>
+> 这时候我们要手动的使其返回true，再次绑定时Rebind()就会执行。否则，如果退出时不显示的指定onUnbind()为成功的话(为false)，那么重新启动此Activity来绑定服务时，Service的onBind()方法和onReBind都不会执行，但是ServiceConnection方法确一定会回调了。这说明在Service中的onBind()方法不同于 onStart()方法，不能被重复调用。
+
+
+
+`i.apps.size()>0`表示什么呢?其中i是 IntentBindRecord 类型的对象，AMS会为每个绑定 Service 的 Intent 分配一个IntentBindRecord 类型对象，代码如下所示:
 
 frameworks/base/services/core/java/com/android/server/am/IntentBindRecord.java
 
@@ -3389,7 +3410,7 @@ final class IntentBindRecord {
 }
 ```
 
-我们来查看IntentBindRecord类，不同的应用程序进程可能使用同一个Intent来绑定Service，因此在注释1处会用apps来存储所有当前Intent绑定Service的应用程序进程。`i.apps.size()>0`表示所有用当前Intent绑定Service的应用程序进程个数大于0，下面来验证 `i.apps.size()>0` 是否为true。我们回到bindServiceLocked方法的注释1处，ServiceRecord的retrieveAppBindingLocked方法如下所示：
+我们来查看IntentBindRecord类，**不同的应用程序进程可能使用同一个Intent来绑定Service**，因此在注释1处会**用apps来存储所有当前Intent绑定Service的应用程序进程**。`i.apps.size()>0`表示所有用当前Intent绑定Service的应用程序进程个数大于0，下面来验证 `i.apps.size()>0` 是否为true。我们回到bindServiceLocked方法的注释1处，ServiceRecord的retrieveAppBindingLocked方法如下所示：
 
 frameworks/base/services/core/java/com/android/server/am/ServiceRecord.java
 
@@ -3411,7 +3432,7 @@ public AppBindRecord retrieveAppBindingLocked(Intent intent,ProcessRecord app) {
 }
 ```
 
-注释1处创建了IntentBindRecord，注释2处根据ProcessRecord获得IntentBindRecord中存储的AppBindRecord，如果AppBindRecord不为null就返回，如果为null就在注释3处创建AppBindRecord，并将ProcessRecord作为key，AppBindRecord作为value保存在IntentBindRecord的apps(i.apps)中。回到requestServiceBindingLocked方法的注释1处，结合ServiceRecord的retrieveAppBindingLocked方法，我们得知`i.app.size()>0`为true，这样就会调用注释2处的代码，r.app.thread的类型为IApplicationThread，它的实现我们已经很熟悉了，是ActivityThread的内部类ApplicationThread，scheduleBindService方法如下所示：
+注释1处创建了IntentBindRecord，注释2处根据ProcessRecord获得IntentBindRecord中存储的AppBindRecord，如果AppBindRecord不为null就返回，如果为null就在注释3处创建AppBindRecord，并将 `ProcessRecord` 作为 `key` ，`AppBindRecord` 作为 `value` 保存在`IntentBindRecord`的apps(i.apps)中。回到requestServiceBindingLocked方法的注释1处，结合ServiceRecord的retrieveAppBindingLocked方法，我们得知`i.app.size()>0`为true，这样就会调用注释2处的代码，r.app.thread的类型为IApplicationThread，它的实现我们已经很熟悉了，是ActivityThread的内部类ApplicationThread，scheduleBindService方法如下所示：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -3428,7 +3449,29 @@ public final void schedule(IBinder token, Intent intent, boolean rebind, int pro
 }
 ```
 
-首先将Service的信息封装成BindServiceData对象，BindServiceData的成员变量rebind的值为false，后面会用到它。接着将BindServiceData传入到sendMessage方法中。sendMessage向H发送消息，我们接着查看H的handleMessage方法：
+首先将**Service的信息封装成 `BindServiceData` 对象**，BindServiceData的成员变量rebind的值为false，后面会用到它。接着将BindServiceData传入到sendMessage方法中。sendMessage向H发送消息，我们接着查看H的handleMessage方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+public void handleMessage(Message msg) {
+    if (DEBUG_SERVICE) {
+        Slog.v(TAG,">>>handling:"+codeToString(msg.what));
+    }
+    switch (msg.what) {
+    ···
+        case BIND_SERVICE:
+            Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,"serviceBind");
+            handleBindService((BindServiceData)msg.obj);
+            Trace.tracedEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+            break;
+    ···     
+    }
+    ···
+}
+```
+
+H在接收到BIND_SERVICE类型消息时，会在handleMessage方法中调用handleBindService方法：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -3462,11 +3505,9 @@ private void handleBindService(BindServiceData data) {
 }
 ```
 
-在注释1处获取要绑定的Service。注释2处的BindServiceData的成员变量rebind的值为false，这样会调用注释3处的代码来调用Service的onBind方法，到这里Service处于绑定状态了。如果rebind的值为true就会调用注释5处的Service的onRebind方法，这一点结合前文的bindServiceLocked方法的注释5处，得出的结论就是：如果当前应用程序进程第一个与Service进行绑定，并且Service已经调用过onUnBind方法，则会调用Service的onRebind方法。handleBindService方法有两个分支，一个是绑定过Service的情况，另一个是未绑定的情况，这里分析未绑定的情况，查看注释4处的代码，实际上是调用AMS的publishService方法。讲到这里，先给出这一部分的代码时序图（不包括Service启动过程），如图4-10所示。
+在注释1处**获取要绑定的Service**。注释2处的BindServiceData的成员变量 `rebind` 的值为false，这样会调用注释3处的代码来**调用Service的 `onBind` 方法**，到这里Service处于绑定状态了。如果rebind的值为true就会调用注释5处的Service的onRebind方法，这一点结合前文的bindServiceLocked方法的注释5处，得出的结论就是：**如果当前应用程序进程第一个与Service进行绑定，并且Service已经调用过onUnBind方法，则会调用Service的onRebind方法。**handleBindService方法有两个分支，一个是绑定过Service的情况，另一个是未绑定的情况，**这里分析未绑定的情况**，查看注释4处的代码，实际上是调用AMS的 `publishService` 方法。讲到这里，先给出这一部分的代码时序图（不包括Service启动过程），如图4-10所示。
 
 <img src="./Android进阶解密.assets/image-20240102143808408.png" alt="image-20240102143808408" style="zoom:67%;" />
-
-
 
 接着来查看AMS的publishService方法，代码如下所示：
 
@@ -3513,7 +3554,7 @@ void publishServiceLocked(ServiceRecord r，Intent intent，IBinder service) {
 }
 ```
 
-注释1处的代码在前面介绍过，c.conn指的是IServiceConnection，它是ServiceConnection在本地的代理，用于解决当前应用程序进程和Service夸进程通信的问题，具体实现为ServiceDispatcher.InnerConnection，其中ServiceDispatcher是LoadedApk的内部类，ServiceDispatcher.InnerConnection的connected方法的代码如下所示：
+注释1处的代码在前面介绍过，c.conn指的是 `IServiceConnection` ，它是**ServiceConnection在本地的代理**，用于**解决当前应用程序进程和Service跨进程通信的问题**，具体实现为ServiceDispatcher.InnerConnection，其中ServiceDispatcher是LoadedApk的内部类，ServiceDispatcher.InnerConnection的connected方法的代码如下所示：
 
 frameworks/base/core/java/android/app/LoadedApk.java
 
@@ -3536,7 +3577,7 @@ static final class ServiceDispatcher {
 }
 ```
 
-在注释1处的代码在前面介绍过，c.conn 指的是IServiceConnection，它是ServiceConnection在本地的代理，用于解决当前应用程序进程和Service跨进程通信的问题，具体实现为ServiceDispatcher.InnerConnection，其中ServiceDispatcher是LoadedApk的内部类，ServiceDispatcher.InnerConnection的connected方法的代码如下所示：
+在注释1处调用了ServiceDispatcher类型的sd对象的connected方法，代码如下所示：
 
 frameworks/base/core/java/android/app/LoadedApk.java
 
@@ -3550,7 +3591,7 @@ public void connected(ComponentName name, IBinder services, boolean dead) {
 }
 ```
 
-在注释1处调用Handler类型的对象mActivityThread的post方法，mActivityThread实际上指向的是H。因此，通过调用H的post方法将RunConnection对象的内容运行在主线程中。RunConnection是LoadedApk的内部类，定义如下所示：
+在注释1处调用Handler类型的对象**mActivityThread的post方法**，mActivityThread实际上**指向的是`H`**。因此，通过调用H的post方法**将RunConnection对象的内容运行在主线程**中。RunConnection是LoadedApk的内部类，定义如下所示：
 
 frameworks/base/core/java/android/app/LoadedApk.java
 
@@ -3592,9 +3633,320 @@ public void doConnected(ComponentName name， IBinder service，boolean dead) {
     }
 ```
 
-在注释1处调用了ServiceConnection类型的对象mConnection的onServiceConnected方法，这样在客户端实现了ServiceConnection接口类的onServiceConnected方法就会被执行。至此，Service的绑定过程就分析完成。最后给出剩余部分的代码时序图，如图4-11所示。
+在注释1处调用了ServiceConnection类型的对象mConnection的onServiceConnected方法，这样**在客户端实现了ServiceConnection接口类的onServiceConnected方法就会被执行**。至此，Service的绑定过程就分析完成。最后给出剩余部分的代码时序图，如图4-11所示。
 
-<img src="./Android进阶解密.assets/image-20240102152538619.png" alt="image-20240102152538619" style="zoom:67%;" />
+<img src="./Android进阶解密.assets/image-20240102152538619.png" alt="image-20240102152538619" style="zoom: 67%;" />
+
+
+
+#### 补：Service的使用提示
+
+[CSDN](https://blog.csdn.net/UserFrank/article/details/129203913)
+
+绑定形式开启的Service的 生命周期管理
+当绑定service和所有客户端解除绑定之后，Android系统将会销毁它，（除非它同时被onStartCommand()方法开启）。
+
+因此，如果你的service是一个纯粹的绑定service，那么你不需要管理它的生命周期。
+
+然而，如果你选择实现onStartCommand()回调方法，那么你必须显式地停止service，因为service此时被看做是开启的。
+
+这种情况下，service会一直运行到它自己调用 stopSelf()或另一个组件调用stopService()，不论它是否和客户端绑定。
+
+另外，如果你的service被开启并且接受绑定，那么当系统调用你的 onUnbind()方法时，如果你想要在下次客户端绑定的时候接受一个onRebind()的调用（而不是调用 onBind()），你可以选择在 onUnbind()中返回true。
+
+onRebind()的返回值为void，但是客户端仍然在它的 onServiceConnected()回调方法中得到 IBinder 对象。
+
+[掘金](https://juejin.cn/post/6844904136417214471?searchId=202401021618145625829D7B1DA92BDC19#heading-0)
+
+多次调用 startService 时，Service 中的 `onStartCommand`方法会执行多次；但多次使用 bindService 时，`onBind` 只执行一次。
+
+bindService 方式打开 Service 时，Service 的生命周期是和打开它的 Activity 绑定的，而 startService 方式打开的 Service 在 Activity 被销毁后（onDestroy），还可以继续存活（可以同时打印 Activity 和 Service 的生命周期查看，这里不举例子了）。
+
+
+
+### 4.4 广播的注册、发送和接受过程
+
+广播作为四大组件之一，使用频率远没有Activity高，但是广播的工作过程还是十分有必要了解的。本节主要从三个方面讲解广播工作过程，分别是广播的注册、发送和接受，这些过程和本章前3节重叠的部分，这一节不会再赘述。
+
+#### 4.4.1 广播的注册过程
+
+广播的注册通俗来讲就是广播接受者注册自己感兴趣的广播，广播的注册分为两种，分别是静态注册和动态注册，静态注册在应用安装时由PackageManagerService来完成注册过程，关于这一过程本节不做介绍，这里只介绍广播的动态注册，时序图如图4-12所示：
+
+![image-20240103154507170](./Android进阶解密.assets/image-20240103154507170.png)
+
+想要动态注册广播，需要调用registerReceiver方法，它在ContextWrapper中实现，代码如下所示：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+```java
+@Override
+public Intent registerReceiver(
+    BroadcastReceiver receiver, IntentFilter filter,
+    String broadcastPermission, Handler scheduler) {
+    return mBase.registerReceiver(receiver,filter,broadcastPermission,scheduler);
+}
+```
+
+这里mBase具体指向的是ContextImpl，ContextImpl的registerReceiver方法有很多重载的方法最终会调用registerReceiverInternal方法：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+
+```java
+private Intent registerReceiverInternal(BroadcastReceiver receiver, int userId,IntentFilter filter, String broadcastPermission,Handler scheduler， Context context，int flags){
+    IIntentReceiver rd =null;
+    if (receiver !=null) {
+        if (mPackageInfo != null && context != null) {//1
+            if (scheduler == null) {
+                scheduler = mMainThread.getHandler();
+            } 
+            rd = mPackageInfo.getReceiverDispatcher(receiver, context, scheduler.mMainThread.getInstrumentation(), true);//2
+        } else {
+            if (scheduler == null) {
+                scheduler = mMainThread.getHandler();
+            }
+            rd = new LoadedApk.ReceiverDispatcher(receiver，context,scheduler,null,true).getIIntentReceiver();//3
+        }
+    }
+    try {
+        final Intent intent = ActivityManager.getService() .registerReceiver(mMainThread.getApplicationThread()，mBasePackageName，rd，filterbroadcastPermission，userId, flags);//4
+        if (intent !=null) {
+            intent.setExtrasClassLoader(getClassLoader());
+            intent.prepareToEnterProcess;
+        }
+        return intent;
+    } catch (RemoteException e) {
+        throw e.rethrowFromSystemServer();
+    }
+}
+```
+
+在注释1处判断如果LoadedApk类型的mPackageInfo不等于null，并且context不等于null就调用注释2处的代码，通过mPackageInfo的getReceiverDispatcher方法获取rd对象，否则就调用注释3处的代码来创建rd对象，IIntentReceiver是一个Binder接口，用于广播的跨进程的通信，它在LoadedApk.ReceiverDispatcher.InnerReceiver中实现，如下所示：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+static final class ReceiverDispatcher {
+    final static class InnerReceiver extends IIntentReceiver.Stub {
+        final WeakReference<LoadedApk.ReceiverDispatcher> mDispatcher;
+        final LoadedApk.ReceiverDispatcher mStrongRef;
+        InnerReceiver(LoadedApl.ReceiverDispatcher rd, boolean strong) {
+            mDispatcher = new WeakReference<LoadedApk.ReceiverDispatcher>(rd);
+            mStrongRef = strong ? rd : null;
+        }
+        ···
+    }
+    ···
+}
+```
+
+回到registerReceiverInternal方法，在注释4处调用了IActivityManager的registerReceiver方法，最终会调用AMS的registerReceiver方法，并将IIntentReceiver类型的rd穿进去，这里之所以不直接传入BroadcastReceiver而是传入IIntentReceiver，是因为注册广播是一个跨进程过程，需要具有跨进程的通信功能的IIntentReceiver。registerReceiver方法内容比较多，这里分为两个部分来进行讲解，先来查看registerReceiver方法的part1，如下所示：
+
+**1、registerReceiver方法的part1**
+
+frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+
+```java
+public Intent reqisterReceiver(IApplicationThread caller, String callerPackage.IIntentReceiver receiver,IntentFilter filter, String permission, int useridint flags) {
+    ···
+    ProcessRecord callerApp =null;
+    ···
+    synchronized(this) {
+        if (caller !=null) {
+            callerApp = getRecordForAppLocked(caller);//1
+        	···
+            Iterator<String> actions = filter.actionsIterator();//2
+            if (actions==null) {
+                ArrayList<String> noAction = new ArrayList<String>(1);
+                noAction.add(null);
+                actions =noAction.iterator();
+            }
+            int[] userIds ={UserHandle.USER_ALL,UserHandle.getUserId(callingUid)};
+            while (actions.hasNext()) {
+                String action =actions.next();
+                for (int id:userIds) { 
+                    ArrayMap<String，ArrayList<Intent>> stickies = mStickyBroadcasts.get(id);
+                    if (stickies !=null) {
+                        ArrayList<Intent> intents = stickies.get(action);
+                        if (intents !=null) {
+                            if (stickyIntents == null) {
+                                stickyIntents = new ArrayList<Intent>();
+                            }
+                            stickyIntents.addAll(intents);//3
+                        }
+                    }
+                }
+            }
+        }
+        
+    ArrayList<Intent> allSticky = null;
+    if (stickyIntents != null) {
+        final ContentResolver resolver = mContext.getContentResolver();
+        //遍历寻找匹配的粘性广播
+        for (int i=0，N=stickyIntents.size();i<N;i++){
+            Intent intent = stickyIntents.get(i);
+            if (instantApp && (intent.getFlags () & Intent.FLAG_RECEIVER_VISIBLE_TO_INSTANT_APPS) == 0) {
+                continue;
+            }
+            if (filter.match(resolver, intent,true,TAG) >= 0){
+                if (allSticky==null) {
+                    allSticky=new ArrayList<Intent>();
+                }
+                allSticky.add(intent);//4
+            }
+        }
+    }
+    ···
+}
+```
+
+在注释1处通过 getRecordForAppLocked 方法得到 ProcessRecord 类型的 callerApp 对象它用于描述请求 AMS 注册广播接收者的 Activity 所在的应用程序进程。在注释2处根据传入的IntentFilter 类型 filter 得到 actions 列表，根据 actions 列表和 userIds (userIds 可以理解为应用程序的 uid)得到所有的粘性广播的 intent，并在注释3处传入到 stickyIntents 中。接下来从 stickyIntents 中找到匹配传入的参数 filter 的粘性广播的 intent，在注释4处将这些intent 存入到 allSticky 列表中，从这里可以看出粘性广播是存储在 AMS 中的。
+
+
+
+**2、registerReceiver方法的part2**
+
+
+
+#### 4.4.2 广播的发送和接受过程
+
+
+
+##### 4.4.2.1 ContextImpl到AMS的调用过程
+
+
+
+##### 4.4.2.2 AMS到BroadcastReceiver的调用过程
+
+
+
+
+
+### 4.5 Content Provider的启动过程
+
+
+
+#### 4.5.1 query方法到AMS的调用过程
+
+
+
+#### 4.5.2 AMS启动Content Provider的过程
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 5 理解上下文Context
+
+Context也就是上下文对象，是Android常用的类，但是对于Context，很多人都停留在会用的阶段，本章从源码角度来分析Context，从而更加深入地理解它。
+
+Android中的四大组件都会涉及Context，因此我们在第4章经常看到Context的身影，比如启动Service会调用ContextWrapper以及ContextImpl的startService方法，ContextWrapper以及ContextImpl就是Context的关联类，理解这些Context的关联类可以更好地理解第4章的内容，本章内容和第4章的内容相辅相成，并且有一些重复的内容，对于重复的内容本章不会赘述。建议阅读完本章后回过头阅读第4章的内容，这样你会有更多的发现。
+
+### 5.1 Context的关联类
+
+Context意为上下文，是一个应用程序环境信息的接口。
+
+在开发中我们经常使用Context，它的使用场景总的来说分为两大类，它们分别是：
+
++ 使用Context调用方法，比如启动Activity、访问资源、调用系统级服务等。
++ 调用方法时传入Context，比如单出Toast、创建Dialog等。
+
+Activity、Service和Application都间接地继承自Context，因此我们可以计算处一个应用程序进程中有多少个Context，这个数量等于Activity和Service的总个数加1，1指的是Application的数量。
+
+Context是一个抽象类它的内部定义了很多方法以及静态变量，它的具体实现类为ContextImpl。和Context相关联的类，除了ContextImpl，还有ContextWrapper、ContextThemeWrapper和Activity等，如图5-1所示。
+
+<img src="./Android进阶解密.assets/image-20240103163549451.png" alt="image-20240103163549451" style="zoom:67%;" />
+
+从图5-1中我们可以看出，ContextImpl和ContextWrapper继承自Context，**ContextWrapper内部包含Context类型的mBase对象**，mBase具体指向ContextImpl。ContextImpl提供了很多功能，但是外界需要使用并拓展ContextImpl的功能，因此设计上使用了**装饰模式**，**ContextWrapper是装饰类，它对ContextImpl进行包装**，ContextWrapper主要是起了方法传递的作用，ContextWrapper中几乎所有的方法都是调用ContextImpl的相应方法来实现的。**ContextThemeWrapper、Service和Application都继承自ContextWrapper**，这样它们都可以通过mBase来使用Context的方法，同时**它们也是装饰类**，在ContextWrapper的基础上又添加了不同的功能。ContextThemeWrapper中包含和主题相关的方法（比如getTheme方法），因此，**需要主题的Activity继承ContextThemeWrapper，而不需要主题的Service继承ContextWrapper**。
+
+Context的关联类采用了装饰模式，主要有以下的优点：
+
++ 使用者（比如Service）能够更方便地使用Context。
++ 如果ContextImpl发生了变化，它的装饰类ContextWrapper不需要做任何修改。
++ ContextImpl的实现不会暴露给使用者，使用者也不必关心ContextImpl的实现。
++ 通过组合而非继承的方式，拓展ContextImpl的功能，在运行时选择不同的装饰类，实现不同的功能。
+
+为了更好地理解Context的关联类的设计理念，就需要理解Application、Activity、Service的Context的创建过程，下面分别对它们进行介绍。
+
+
+
+### 5.2 Application Context的创建过程
+
+我们通过调用getApplicationContext来获取应用程序全局的Application Context，那么Application Context是如何创建的呢？在一个应用程序启动完成后，应用程序就会有一个全局的Application Context，那么我们就从应用程序启动过程开始着手。Application Context的创建过程的时序图如图5-2所示。
+
+![image-20240103164825455](./Android进阶解密.assets/image-20240103164825455.png)
+
+ActivityThread类作为应用程序进程的主线程管理类，它会调用它的内部类ApplicationThread的scheduleLaunchActivity方法来启动Activity，如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private class ApplicationThread extends IApplicationThread.Stub {
+    @Override
+    public final void schedulelaunchActivity(Intent intent，IBinder token,intident，ActivityInfo info, Configuration curConfig, Configuration overrideConfig,CompatibilityInfo compatInfo, String referrer,IVoiceInteractor voiceInteractorint procState，Bundle state， PersistableBundle persistentState,List<ResultInfo> pendingResults，List<ReferrerIntent> pendingNewIntentsboolean notResumed，boolean isForward,ProfilerInfo profilerInfo) {
+        updateProcessState(procState, false);
+        ActivityClientRecord r = new ActivityClientRecord();
+        r.token = token;
+        r.ident = ident;
+        r.intent = intent;
+        r.referrer = referrer;
+        r.voiceInteractor = voiceInteractor;
+        r.activityInfo= info;
+        ···
+        updatePendingConfiquration(curConfiq);
+        sendMessage(H.LAUNCH ACTIVITY，r);
+    }
+ ···
+}
+```
+
+在ApplicationThread的scheduleLaunchActivity方法中向H类发送LAUNCH_ACTIVITY类型的消息，目的是将启动Activity的逻辑放在主线程的消息队列中，这样启动Activity的逻辑会在主线程中执行。我们接着查看H类的handleMessage方法对LAUNCH_ACTIVITY类型的消息的处理：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private class H extends Handler {
+    public static final int LAUNCH_ACTIVITY=100;
+···
+public void handleMessage(Message msg) {
+    if (DEBUG MESSAGES) Slog.v(TAG，">>>handling:"+ codeToString(msq.what));
+    switch (msq.what) {
+        case LAUNCH_ACTIVITY: {
+            Trace.traceBeqin(Trace.TRACE_TAG_ACTIVITY_MANAGER，"activityStart");
+            final ActivityClientRecord r =(ActivityClientRecord) msg.obj;
+            r.packageInfo = getPackageInfoNoCheck(r.activityInfo.applicationInfo,r.compatInfo);//1
+            handleLaunchActivity(r，null，"LAUNCH_ACTIVITY");//2                     
+            Trace.traceEnd(Trace.TRACE TAG ACTIVITY MANAGER);
+        } break;
+        ···
+}
+```
+
+H继承自Handler，是ActivityThread的内部类。在注释1处通过getPackageInfoNoCheck方法获得LoadedApk类型的对象，并将该对象赋值给ActivityClientRecord的成员变量packageInfo，其中LoadedApk用来描述已加载的APK文件。在注释2处调用了ActivityThread的handleLaunchActivity方法，如下所示：
+
+
 
 
 
