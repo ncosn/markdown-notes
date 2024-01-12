@@ -1,4 +1,4 @@
-## Android系统架构与系统启动
+## 1 Android系统架构与系统启动
 
 ### Android系统架构
 
@@ -62,9 +62,9 @@ Android和核心服务基于Linux内核，在此基础上添加了部分Android�
 
 
 
-## Android系统启动
+## 2 Android系统启动
 
-### init进程启动过程
+### 2.1 init进程启动过程
 
 `init`进程是Android系统中用户空间的第一个进程，进程号为1，作为第一个进程被赋予了很多极其重要的工作职责，比如创建Zygote（孵化器）和属性服务。init进程由多个源文件共同组成，位于源码目录`system/core/init`中。
 
@@ -415,13 +415,15 @@ init 程启动做了很多的工作，总的来说主要做了以下三件事：
 
 
 
-### Zygote进程启动过程
+### 2.2 Zygote进程启动过程
+
+#### 2.2.1 Zygote概述
 
 Android系统中，**DVM和ART**、**应用程序进程**以及**运行系统的关键服务的SystemServer进程**都是有Zygote进程来创建的，我们也将它成为孵化器。它通过fock（复制进程）的形式来创建应用程序和SystemServer进程，由于Zygote进程在启动时会创建DVM或者ART，因此通过fock而创建的应用程序进程和SystemServer进程可以在内部获取一个DVM或者ART的实例副本。
 
 我们已经知 Zygote 进程是 init 进程启动时创建的，起初 Zygote 进程的名称并不是叫"zygote"，而是叫"app_process"，这个名称是在 Android.mk 中定义的，Zygote 进程启动后， Linux 系统下的 pctrl 系统会调用 app_process，将其名称换成了"zygote"。
 
-#### Zygote启动脚本
+#### 2.2.2 Zygote启动脚本
 
 在init.rc文件中采用了Import类型语句来引入Zygote启动脚本，这些启动脚本由Android初始化语言（Android Init Language）来编写的：
 
@@ -438,7 +440,7 @@ Android系统中，**DVM和ART**、**应用程序进程**以及**运行系统的
 
 
 
-#### Zygote进程启动过程介绍
+#### 2.2.3 Zygote进程启动过程介绍
 
 前面的流程：
 
@@ -749,11 +751,11 @@ void runSelectLoop(String abiList) throws Zygote.MethodAndArgsCaller {
 
 
 
-### SystemServer处理过程
+### 2.3 SystemServer处理过程
 
 SystemServer进程主要用于创建**系统服务**，**AMS**、**WMS**和**PMS**都由它来创建。
 
-#### Zygote处理SystemServer进程
+#### 2.3.1 Zygote处理SystemServer进程
 
 <img src="./Android进阶解密.assets/image-20231204092629923.png" alt="image-20231204092629923" style="zoom: 50%;" />
 
@@ -855,7 +857,7 @@ virtual void onZygoteInit() {
 }
 ```
 
-注释1处的代码用来启动一个Binder线程池，这样SystemServer进程就可以使用Binder与其他进程进行通信，看到这里我们知道RuntimeInit.java的nativeZygoteInit函数主要是用来启动Binder线程池。
+注释1处的代码用来**启动一个Binder线程池**，这样**SystemServer进程就可以使用Binder与其他进程进行通信**，看到这里我们知道RuntimeInit.java的nativeZygoteInit函数主要是用来启动Binder线程池。
 
 ##### 2、进入SystemServer的main方法
 
@@ -900,7 +902,7 @@ private static void invokeStaticMain(String className, String[] argv, ClassLoade
 }
 ```
 
-注释1处的className为com.android.server.SystemServer，通过反射返回的cl为SystemServer类。在注释2处找到SystemServer中的main方法。在注释3处将找到的main方法传入MethodAndArgsCaller异常中并抛出该异常，捕获MethodAndArgsCaller异常的代码在Zygotelnitjava的main方法中，这个main方法会调用SystemServer的main方法。那么为什么不直接在invokeStaticMain方法中调用SystemServer的main方法呢?原因是这种抛出异常的处理会清除所有的设置过程需要的堆栈帧，并让SystemServer的main方法看起来像是SystemServer进程的入口方法。在Zygote启动了SystemServer进程后，SystemServer进程已经做了很多的准备工作，而这些工作都是在SystemServer的main方法调用之前做的，这使得SystemServer的main方法看起来不像是SystemServer进程的入口方法，而这种抛出异常交由Zygotelnit.java的main方法来处理，会让SystemServer的main方法看起来像是SystemServer进程的入口方法。
+注释1处的className为com.android.server.SystemServer，通过反射返回的cl为SystemServer类。在注释2处找到**SystemServer中的main方法**。在注释3处将找到的main方法**传入MethodAndArgsCaller异常中并抛出该异常**，**捕获MethodAndArgsCaller异常的代码在Zygotelnit.java的main方法**中，**这个main方法会调用SystemServer的main方法**。那么为什么不直接在invokeStaticMain方法中调用SystemServer的main方法呢?原因是这种抛出异常的处理会清除所有的设置过程需要的堆栈帧，并让SystemServer的main方法看起来像是SystemServer进程的入口方法。在Zygote启动了SystemServer进程后，SystemServer进程已经做了很多的准备工作，而这些工作都是在SystemServer的main方法调用之前做的，这使得SystemServer的main方法看起来不像是SystemServer进程的入口方法，而这种抛出异常交由Zygotelnit.java的main方法来处理，会让SystemServer的main方法看起来像是SystemServer进程的入口方法。
 
 下面来查看在ZygoteInit.java的main方法中是如何捕获MethodAndArgsCaller异常的：
 
@@ -945,7 +947,7 @@ public static class MethodAndArgsCaller extends Exception implements Runnable {
 
 注释1处的mMethod指的是SystemServer的main方法，调用了mMethod的invoke方法后，SystemServer的main方法就会被动态调用，SystemServer进程就进入了SystemServer的main方法中。
 
-#### 解析SystemServer进程
+#### 2.3.2 解析SystemServer进程
 
 下面来查看SystemServer的main方法：
 
@@ -1047,7 +1049,7 @@ public static PackageManagerService main(Context context, Installer installer, b
 
 在注释1直接创建PackageManagerService并在注释2处将PackageManagerService注册到ServiceManager中，ServiceManager用来管理系统中的各种Service，**用于系统C/S架构中的Binder通信机制**：Client端要使用某个Service，则需要先到ServiceManager查询Service的相关信息，然后根据Service的相关信息与Service所在的Server进程建立通信通路，这样Client端就可以使用Service了。
 
-#### SystemServer进程总结
+#### 2.3.3 SystemServer进程总结
 
 SystemServer进程被创建后主要做了如下工作：
 
@@ -1057,7 +1059,9 @@ SystemServer进程被创建后主要做了如下工作：
 
 
 
-### Launcher启动过程
+### 2.4 Launcher启动过程
+
+#### 2.4.1 Launcher概述
 
 系统启动的最后一步是启动一个应用程序来显示系统中已经安装的应用程序，这个应用程序就叫做Launcher。Launcher在启动过程中会请求PackageManagerService返回系统中已经安装的应用程序的信息，并将这些信息封装成一个快捷图标列表显示在系统屏幕上，这样用户可以通过点击这些快捷图标来启动相应的应用程序。
 
@@ -1068,7 +1072,7 @@ SystemServer进程被创建后主要做了如下工作：
 
 
 
-#### Launcher启动过程
+#### 2.4.2 Launcher启动过程介绍
 
 SystemServer在启动过程中会启动PackageManagerService，PackageManagerService启动后会将系统中的应用程序安装完成。在此之前已经启动的AMS会将Launcher启动起来，Launcher启动过程如图：
 
@@ -1273,7 +1277,7 @@ void startHomeActivityLocked(Intent intent, ActivityInfo aInfo, String reason) {
 
 在注释1处将Launcher放入HomeStack中，HomeStack是在ActivityStackSupervisor中定义的用于存储Launcher的变量。接着调用startActivityLocked方法来启动Launcher，剩余的过程会和Activity的启动过程类似，在第4章介绍。最终进入Launcher的onCreate方法中，到这里Launcher完成了启动。
 
-#### Launcher中应用图标显示过程
+#### 2.4.3 Launcher中应用图标显示过程
 
 Launcher 完成启动后会做很多的工作，作为桌面它会显示应用程序图标， 这与应用程序开发有所关联，应用程序图标是用户进入应用程序的入口，因此我们必要了解Launcher 是如何显示应用程序图标的。
 
@@ -1480,7 +1484,7 @@ onFinishInflate方法会在AllAppsContainerView加载完XML布局时调用，在
 
 
 
-#### Android系统启动流程
+### 2.5 Android系统启动流程
 
 结合本章前4节的内容，我们可以清晰地总结出 Android 系统启动流程，这个流程主要有以下几个部分。
 
@@ -2219,7 +2223,7 @@ public static void main(String[] args) {
 }
 ```
 
-ActivityThread类用于管理当前应用程序的主线程，在注释1处**创建主线程的消息循环Looper**，在注释2处**创建ActivityThread**。在注释3处判断Handler类型的sMainThreadHandler是否为null，如果为null则在注释4处**获取H类并赋值给`sMainThreadHandler`**，这个H类继承自Handler，是**ActivityThread的内部类**，用于处理主线程的消息循环，在第4章、第5章我们将会经常提到它。在注释5处调用Looper的loop方法，使得Looper开始处理消息。可以看出，系统在应用程序进程启动完成后，就会创建一个消息循环，这样运行在应用程序进程中的应用程序可以方便地使用消息处理机制。
+**`ActivityThread`类用于管理当前应用程序的主线程**，在注释1处**创建主线程的消息循环Looper**，在注释2处**创建ActivityThread**。在注释3处判断Handler类型的sMainThreadHandler是否为null，如果为null则在注释4处**获取H类并赋值给`sMainThreadHandler`**，这个H类继承自Handler，是**ActivityThread的内部类**，用于处理主线程的消息循环，在第4章、第5章我们将会经常提到它。在注释5处调用Looper的loop方法，使得Looper开始处理消息。可以看出，系统在应用程序进程启动完成后，就会创建一个消息循环，这样运行在应用程序进程中的应用程序可以方便地使用消息处理机制。
 
 > 1. **调用 `thread.attach` 方法：** 在 `ActivityThread` 的 `main` 方法中，会调用 `thread.attach` 方法，这个方法主要负责将 `ActivityThread` 与 `ApplicationThread` 绑定。（false表示当前启动的是一个普通的应用程序进程，而不是系统进程。）
 > 2. **Binder 对象的传递：** 在 `thread.attach` 方法内部，会通过 IPC 机制将 `ApplicationThread` 的 Binder 对象传递给 AMS。这个过程通常涉及到 Binder 通信，其中 `ApplicationThread` 的 Binder 对象会被传递给 AMS。
@@ -2701,7 +2705,7 @@ private class H extends Handler {
                 Trace.traceBegin(Trace.TRACE TAG ACTIVITY MANAGER，"activityStart");
                 final ActivityClientRecord r = (ActivityClientRecord) msg.obj;//1
                 r.packageInfo = getPackageInfoNoCheck(r.activityInfo.applicationInfo，r.compatInfo);//2
-                handleLaunchActivity(r, null,"LAUNCH ACTIVITY");//3
+                handleLaunchActivity(r, null,"LAUNCH_ACTIVITY");//3
                 Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
             } break;
             case RELAUNCH ACTIVITY: {
@@ -2717,7 +2721,7 @@ private class H extends Handler {
 }
 ```
 
-查看H的 handleMessage 方法中对 LAUNCH_ACTIVITY 的处理，在注释1处将传过来的 msg 的成员变量 obj 转换为 `ActivityClientRecord`。在注释2处通过getPackageInfNoCheck 方法获得 `LoadedApk` 类型的对象并赋值给 ActivityClientRecord 的成员变量 `packagelnfo`。应用程序进程要启动 Activity 时需要**将该Activity 所属的APK 加载进来**,而 `LoadedApk`就是**用来描述已加载的APK 文件**的。在注释3处调用 handleLaunchActivity方法，代码如下所示：
+查看H的 handleMessage 方法中对 LAUNCH_ACTIVITY 的处理，在注释1处将传过来的 msg 的成员变量 obj 转换为 `ActivityClientRecord`。在注释2处通过getPackageInfNoCheck 方法获得 `LoadedApk` 类型的对象并赋值给 ActivityClientRecord 的成员变量 `packagelnfo`。应用程序进程要启动 Activity 时需要**将该Activity 所属的APK 加载进来**，而 `LoadedApk`就是**用来描述已加载的APK 文件**的。在注释3处调用 handleLaunchActivity方法，代码如下所示：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -2833,7 +2837,7 @@ final void performCreate(Bundle iciclePersistableBundle persistentState) {
 
 在performCreate方法中会调用Activity的onCreate方法，到这里，根Activity就启动了，即应用程序就启动了。根Activity启动过程就讲到这里。下面来学习根Activity启动过程中涉及的进程。
 
-#### 根Activity启动过程中涉及的进程
+#### 4.1.4根Activity启动过程中涉及的进程
 
 根Activity启动过程中会涉及4个进程，分别是Zygote进程、Launcher进程、AMS所在进程（SystemServer进程）、应用程序进程。它们之间的关系如图：
 
@@ -3944,13 +3948,511 @@ public void handleMessage(Message msg) {
 }
 ```
 
-H继承自Handler，是ActivityThread的内部类。在注释1处通过getPackageInfoNoCheck方法获得LoadedApk类型的对象，并将该对象赋值给ActivityClientRecord的成员变量packageInfo，其中LoadedApk用来描述已加载的APK文件。在注释2处调用了ActivityThread的handleLaunchActivity方法，如下所示：
+H继承自Handler，是ActivityThread的内部类。在注释1处**通过getPackageInfoNoCheck方法获得 `LoadedApk` 类型的对象**，并**将该对象赋值给ActivityClientRecord的成员变量 `packageInfo `**，其中 `LoadedApk` 用来**描述已加载的APK文件**。在注释2处调用了ActivityThread的handleLaunchActivity方法，如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private void handleLaunchActivity(ActivityClientRecord r, Intent customIntent,String reason) {
+    ···
+    Activity a = performLaunchActivity(r,customIntent);
+    ···
+}
+```
+
+在handleLaunchActivity方法中调用了ActivityThread的performLaunchActivity方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
+    ···
+    try {
+        Application app = r.packageInfo.makeApplication(false,mInstrumentation);
+        ···
+    }
+    ···
+    return activity;
+}
+```
+
+在performLaunchActivity方法中有很多重要的逻辑，这里只保留了和ApplicationContext相关的逻辑，想要了解更多performLaunchActivity方法中的逻辑请查看4.1.3节的内容。ActivityClientRecord的成员变量packageInfo是LoadedApk类型的，我们接着来查看LoadedApk的`makeApplication`方法，如下所示：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+public Application makeApplication(boolean forceDefaultAppClass, Instrumentation instrumentation) {
+    if(mApplication != null) {//1
+        return mApplication;
+    }
+    Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,"makeApplication");
+    Application app=null;
+    String appClass = mApplicationInfo.className;
+    if (forceDefaultAppClass || (appClass == null)) {
+        appClass ="android.app.Application";
+    } 
+    try {
+        java.lang.ClassLoader cl = getClassLoader();
+        if (!mPackageName.equals("android")) {
+            Trace.traceBegin(Trace.TRACE TAG ACTIVITY MANAGER
+"initializeJavaContextClassLoader");
+            initializeJavaContextClassLoader();
+            Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+        }
+        ContextImpl appContext = ContextImpl.createAppContext(mActivityThread,this);//2
+        app = mActivityThread.mInstrumentation,newApplication(cl，appClass，appContext);//3
+        appContext.setOuterContext(app) ;//4
+    } catch (Exception e) {
+        ···
+    }
+    mActivityThread.mAllApplications.add(app);    
+    mApplication =app;//5
+    ···
+    return app;
+}
+```
+
+在注释1处如果 mApplication 不为 null 则返回 mApplication，这里假设是第一次启动应用程序，因此mApplication为 null。在注释2处通过 ContextImpl的 createAppContext 方法来**创建 ContextImpl**。注释 3 处的代码用来**创建` Application`**，在 Instrumentation 的newApplication 方法中传入了 ClassLoader 类型的对象以及注释2处创建的 ContextImpl。在注释4处将`Application` 赋值给 `ContextImpl` 的 Context 类型的成员变量 `mOuterContext`，**这样ContextImpl中也包含了Application 的引用**。在注释5处将Application 赋值给 `LoadedApk` 的成员变量 `mApplication`，这个 mApplication 是 Application 类型的对象，它用来**代表`Application Context`**，在 Application Context 的获取过程中我们会再次提到 mApplication。下面来查看注释3处的 Application 是如何创建的，Instrumentation 的 newApplication 方法如下所示：
+
+frameworks/base/core/java/android/app/Instrumentation.java
+
+```java
+static public Application newApplication(Class<?> clazz, Context context) throws InstantiationException,IllegalAccessException,ClassNotFoundException {
+    Application app = (Application) clazz.newInstance();
+    app.attach(context);//1
+    return app;
+}
+```
+
+Insturmentation中有两个newApplication重载方法，最终会调用上面这个重载方法。注释1处通过反射来创建Application，并**调用了Application的attach方法**，将ContextImpl传进去，最后返回该Application，Application的attach方法如下所示：
+
+frameworks/base/core/java/android/app/Application.java
+
+```java
+/* package */ final void attach(Context context) {
+    attachBaseContext(context);
+    mLoadedApk = ContextImpl.getImpl.get(context).mPackageInfo;
+}
+```
+
+在attach方法中调用了attachBaseContext方法，它在Application的父类ContextWrapper中实现，代码如下所示：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+
+```java
+protected void attachBaseContext(Context base) {
+    if (mBase != null) {
+        throw new IllegalStateException("Base context already set");
+    }
+    mBase = base;
+}
+```
+
+这个base一路传递过来指的是ContextImpl，它是Context的实现类，**将ContextImpl赋值给ContextWrapper的Context类型的成员变量mBase**，这样在ContextWrapper中就可以使用Context的方法，而Application继承自ContextWrapper，同样可以使用Context的方法。**Application的attach方法的作用就是使Application可以使用Context的方法**，这样Application才可以用来代表Application Context。
+
+> attach就是为了将makeApplication创建的ContextImpl传给ContextWrapper的mBase（**理解装饰模式**）
+
+Application Context的创建过程就讲到这里，接下来学习Application Context的获取过程。
+
+
+
+### 5.3 Application Context 的获取过程
+
+当我们熟知了Application Context的创建过程之后，那么它的获取过程会非常好理解。我们通过调用getApplicationContext方法来获得Application Context，getApplicationContext方法在ContextWrapper中实现，如下所示：
+
+frameworks/base/core/java/android/content/ContentWrapper.java
+
+```java
+@Override
+public Context getApplicationContext() {
+    return mBase.getApplication();
+}
+```
+
+mBase指的是ContextImpl我们来查看ContextImpl的getApplicationContext方法：
+
+frameworks/base/core/java/android/app/ContextImpl.java
+
+```java
+@Override
+public Context getApplicationContext() {
+    return (mPackageInfo != null) ?
+        mPackageInfo.getApplication():mMainThread.getApplication();
+}
+```
+
+如果LoadedApk类型的mPackageInfo不为null，则调用LoadedApk的getApplication方法，否则调用ActivityThread的getApplication方法。由于应用程序这时已经启动，因此LoadedApk不会为null，则会**调用LoadedApk的getApplication方法**，如下所示：
+
+frameworks/base/core/java/android/app/LoadedApk.java
+
+```java
+Application getApplication() {
+    return mApplication;
+}
+```
+
+这里的`mApplication`我们应该很熟悉，它**在上文LoadedApk的makeApplication方法的注释5处被赋值**。这样我们通过getApplicationContext方法就获取到了Application Context。
+
+
+
+### 5.4 Activity的Context创建过程
+
+想要在Activity中使用Context提供的方法，务必要先创建Context。Activity的Context会在Activity的启动过程中被创建，在4.1.3节中降到了ActivityThread启动Activity的过程，我们就从这里开始分析。Activity的Context创建过程的时序图如图5-3所示。
+
+<img src="./Android进阶解密.assets/image-20240104101750660.png" alt="image-20240104101750660" style="zoom:67%;" />
+
+ActivityThread是应用程序进程的主线程管理类，它的内部类ApplicationThread会调用scheduleLaunchActivity方法来启动Activity，scheduleLaunchActivity方法如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+@Override
+public final void scheduleLaunchActivity(Intent intent, IBinder token, int ident, ActivityInfo info, Configuration curConfig, Configuration overrideConfig, CompatibilityInfo compatInfo, String referrer, IVoiceInteractor voiceInteractor, int procState, Bundle state, PersistableBundle persistentState, List<<ResultInfo> pendingResults, List<ReferrerIntent> pendingNewIntents, boolean notResumed, boolean isForward, ProfilerInfo profilerInfo) {
+    updateProcessState(procState,false);
+    ActivityClientRecord r =new ActivityClientRecord();
+    r.token = token;
+    r.ident = ident;
+    r.intent = intent;
+    r.referrer = referrer;
+    ···
+    sendMessage(H.LAUNCH_ACTIVITY,r);
+}
+```
+
+scheduleLaunchActivity方法将启动Activity的参数封装成ActivityClientRecord，sendMessage方法向H类发送类型为LAUNCH_ACTIVITY的消息，并将ActivityClientRecord传递过去。sendMessage方法的目的是将启动Activity的逻辑放在主线程的消息队列中，这样启动ACTIVITY的逻辑就会在主线程中执行。H类的handleMessage方法会对LAUNCH_ACTIVITY类型的消息进行处理，其中调用了ActivityThread的handleLaunchActivity方法，而在handleLaunchActivity方法中又调用了ActivityThread的performLaunchActivity方法，这一过程在5.2节已经讲过了，直接来看ActivityThread的performLaunchActivity方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private Activity performLaunchActivity(ActivityClient Record r,Intent customIntent) {
+    ···
+    //创建要启动Activity的上下文环境
+    ContextImpl appContext = createBaseContextForActivity(r);//1
+    Activityactivity=null;
+    try {
+        java.lang.ClassLoader cl = appContext.getClassLoader();
+        //用类加载器来创建该Activity的实例
+        activity=mInstrumentation.newActivity(
+cl,component.getClassName(),r.intent);//2
+        ...
+    } catch(Exception e) {
+        ···
+    }
+    try {
+        ···
+        if (activity!=null) {
+            ···
+            appContext.setOuterContext(activity);//3
+            /**
+             * 4
+             */
+            activity.attach(appContext,this，getInstrumentation(),r.tokenr.ident，app，r.intent，r.activityInfo,title,r.parent,r.embeddedIDr.lastNonConfigurationInstances， config，r.referrer， r.voiceInteractor,window，r.configCallback);
+            ...
+            if (r.isPersistable()) {
+                mInstrumentation.callActivityOnCreate(activity，r.stater.persistentState);//5
+            } else {
+                mInstrumentation.callActivityOnCreate(activity， r.state);
+            }
+            ...
+        }
+        r.paused= true;
+        mActivities.put(r.token,r);
+    } catch (SuperNotCalledException e) {
+        throw e;
+    } catch (Exception e) {
+        ...
+    }
+    return activity;
+}
+```
+
+在 performLaunchActivity 方法中有很多重要的逻辑，这里只保留了 Activity 的 Context 相关的逻辑。在注释2处用来**创建 Activity 的实例**。在注释1处**通过 createBaseContextForActivity方法来创建 Activity的ContextImpl**，并将 ContextImpl传入注释4处的activity的 attach方法中。在注释3处调用了 ContextImpl的 setOuterContext 方法，将此前创建的 `Activity` 实例赋值给 `ContextImpl` 的成员变量 `mOuterContext`，这样 ContextImpl也可以访问 Activity 的变量和方法。在注释5处 mInstrumentation 的 callActivityOnCreate 方法中会调用 Activity 的 onCreate 方法。我们查看注释1处的 createBaseContextForActivity 方法：
+
+frameworks/base/core/java/android/app/Activity.java
+
+```java
+final void attach(Context context，ActivityThread aThreadInstrumentation instr, IBinder token, int ident, Application application, Intent intent, ActivityInfo info, CharSequence title, Activity parent, String id, NonConfiqurationInstances lastNonConfiqurationInstances, Confiquration config, String referrer, IVoiceInteractor voiceInteractor, Window window, ActivityConfigCallback activityConfigCallback) {
+    attachBaseContext(context);//1
+    mFragments.attachHost(null /*parent*/);
+    mWindow = new PhoneWindow(this，window，activityConfigCallback);//2
+    mWindow.setWindowControllerCallback(this);
+    mWindow.setCallback(this);//3
+    mWindow.setOnWindowDismissedCallback(this);
+    mWindow.getLayoutInflater().setPrivateFactory(this);
+
+    mWindow.setWindowManager((WindowManager)context,getSystemService(Context.WINDOW SERVICE)，mToken，mComponent.flattenToString()(info.flags & ActivityInfo.FLAG HARDWARE ACCELERATED) != 0);//4
+    if (mParent !=null) {
+mWindow.setContainer(mParent.getWindow());
+    }
+    mWindowManager =
+        mWindow.getWindowManager();//5
+    mCurrentConfig= config;
+    mWindow.setColorMode(info.colorMode);
+}
+```
+
+在注释2处**创建 `PhoneWindow`**，它代表**应用程序窗口**。 PhoneWindow 在运行中会间接触发很多关联事件，比如点击、菜单弹出、屏幕焦点变化等事件，**这些事件需要转发给与 PhoneWindow 关联的 Activity**，转发操作通过 `Window.Callback` 接口实现，**Activity 实现了这个接口**。在注释3处将当前 Activity 通过 Window 的 setCallback 方法传递给 PhoneWindow 。在注释4处为 `PhoneWindow` **设置 `WindowManager`**，在注释5处获取 WindowManager 并赋值给 Activity 的成员变量 mWindowManager，这样 Activity 就可以通过 getWindowManager 方法来获取 WindowManager。注释1处的 attachBaseContext 方法在 ContextThemeWrapper 中实现，如下所示：
+
+frameworks/base/core/java/android/view/ContextThemeWrapper.java
+
+```java
+@Override
+protected void attachBaseContext(Context newBase) {
+    super.attachBaseContext(newBase);
+}
+```
+
+attachBaseContext 方法接着调用 ContextThemeWrapper 的父类 ContextWrapper 的 attachBaseContext方法：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+
+```java
+protected void attachBaseContext(Context base) {
+    if (mBase!=null) {
+        throw new IllegalStateException
+    }
+    mBase = base;//1
+}
+```
+
+> 同application context创建过程中的一样，attach是将createBaseContextForActivity创建的ContextImpl传递给ContextWrapper的mBase（**理解装饰模式**）
+
+注释1处的base指的是一路传递过来的Activity的ContextImpl，将它赋值给ContextWrapper的成员变量mBase。这样ContextWrapper的功能就可以交由 ContextImpl 来处理，举个例子，如下所示：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+
+```java
+@Override
+public Resources.Theme getTheme() {
+    return mBase.getTheme();
+}
+```
+
+当我们调用ContextWrapper的 `getTheme` 方法时，其实就是调用了ContextImpl的 `getTheme` 方法。Activity的Context创建过程就讲到这里。总结一下，在启动Activity的过程中创建ContextImpl，并赋值给ContextWrapper的成员变量mBase。Activity继承自ContextWrapper的子类ContextThemeWrapper，这样在Activity中就可以使用Context中定义的方法了。
+
+
+
+### 5.5 Service的Context创建过程
+
+Service的Context创建过程与Activity的Context创建过程类似，是在Service的启动过程中被创建的。Service的Context创建过程的时序图可以参考图5-3，这里不在给出。在4.2.2节提到ActivityThread启动Service的过程，我们从这里开始分析。ActivityThread的内部类ApplicationThread会调用scheduleCreateService方法来启动Service，如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+public final void scheduleCreateService(IBinder tokenServiceInfo info, CompatibilityInfo compatInfo,int processState) {
+    updateProcessState(processState， false);
+    CreateServiceData s = new CreateServiceData();
+    s.token = token;
+    s.info = info;
+    s.compatInfo = compatInfo;
+    sendMessage(H.CREATE SERVICE，s);
+}
+```
+
+sendMessage方法向H类发送CREATE_SERVICE类型的消息，H类的handleMessage方法会对CREATE_SERVICE类型的消息进行处理，其中调用了ActivityThread的handleCreateService方法：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private void handleCreateService(CreateServiceData data) {
+    ···
+    try {
+        if (localLOGV) Slog.v(TAG,"Creating service " + data.info.name);
+        ContextImpl context = ContextImpl.createAppContext(this, packageInfo);//1
+        context.setOuterContext(service);
+        Application app = packageInfo.makeApplication(false,mInstrumentation);
+        service.attach(context,this,data.info.name, data.token, app, ActivityManager.getService());//2
+        service.onCreate();
+        mServices.put(data.token,service);
+        try {
+            ActivityManager.getService().serviceDoneExecuting(data.token,SERVICE_DONE_EXECUTING_ANON,0,0);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    } catch (Exception e) {
+        ···
+    }
+}
+```
+
+在注释1处通过ContextImpl的createAppContext方法创建了ContextImpl，并将该ContextImpl传入注释2处service的attach方法中：
+
+frameworks/base/core/java/android/app/Service.java
+
+```java
+public final void attach(Context context, ActivityThread thread, String className, IBinder token, Application application, Object activityManager) {
+    attachBaseContext(context);//1
+    mThread = thread;
+    mClassName = className;
+    mToken = token;
+    mApplication = application;
+    mActivityManager = (IActivityManager)activityManager;
+    mStartCompatibility = getApplicationInfo().targetSdkVersion < Build,VERSION_CODES.ECLAIR;
+}
+```
+
+在注释1处调用了ContextWrapper的attachBaseContext方法，如下所示：
+
+frameworks/base/core/java/android/content/ContextWrapper.java
+
+```java
+protected void attachBaseContext(Context base) {
+    if(mBase != null) {
+        throw new IllegalStateException("Base context already set");
+    }
+    mBase =base;//1
+}
+```
+
+注释1处的base是一路传递过来的ContextImpl，将ContextImpl赋值给ContextWrapper的Context类型的成员变量mBase，这样在ContextWrapper中就可以使用Context的方法，而Service继承自ContextWrapper，同样可以使用Context的方法。
+
+
+
+### 5.6 本章小结
+
+本章首先讲到了 Context 的关联类,又讲解了 Application Activity 和 Service 的 Context创建的过程，结合这些创建过程可以更好地理解 Context 的关联类的设计理念。同时本章的内容也会帮助读者更好地理解第 4 章的内容，建议阅读本章内容后，回过头阅读第 4 章的内容。
+
+
+
+## 6 理解ActivityManagerService
+
+### 6.1 AMS家族
+
+AMS处理的逻辑多而复杂，因此AMS并不是孤军奋战，而是有一些类和它共同奋战，这些类会帮助AMS完成相关逻辑，AMS和这些类就称为AMS家族。Android 7.0和Android 8.0对于AMS相关部分处理有较大的区别，为了更好地理解AMS家族，这里分别介绍Android 7.0和Android 8.0的AMS家族
+
+#### 6.1.1 Android 7.0的AMS家族
+
+ActivityManager是一个和AMS相关联的类，它主要对运行中的Activity进行管理，这些管理工作并不是由ActivityManager来处理的，而是交由AMS来处理的。ActivityManager中的方法会通过 `ActivityManagerNative`（以后简称 `AMN`）的getDefault方法来得到 `ActivityManagerProxy`（以后简称 `AMP`），通过AMP就可以和AMN进行通信，而AMN是一个抽象类，它将功能交由它的子类AMS来处理，因此**AMP就是AMS的代理类**。AMS作为系统服务，很多API是不会暴露给ActivityManager的，因此ActivityManager并不算是AMS家族的一份子。为了讲解AMS家族，这里以Android7.0的Activity启动过程为例，在Activity的启动过程中会调用Instrumentation的execStartActivity方法，如下所示：
+
+frameworks/base/core/java/android/app/Instrumentation.java
+
+```java
+public ActivityResult execStartActivity(Context who，IBinder contextThread，IBinder token，Activity targetIntent intent，int requestCode, Bundle options) {
+    ...
+    try {
+        intent.migrateExtraStreamToClipData();
+        intent.prepareToLeaveProcess(who);
+        int result =ActivityManagerNative.qetDefault()startActivity(whoThread，who.getBasePackageName()， intentintent.resolveTypeIfNeeded(who.getContentResolver())token，target != null ? target.mEmbeddedID : null,
+requestCode，0，null options);
+        checkStartActivityResult(result, intent);
+    } catch (RemoteException e) {
+        throw new RuntimeException("Failure from system"，e);
+    }
+    return null;
+}
+```
+
+在execStartActivity方法中会调用AMN的getDefault来获取AMS的代理类AMP。接着调用了AMP的startActivity方法，先来查看AMN的getDefault方法做了什么，如下所示：
+
+
+
+#### 6.1.2 Android 8.0的AMS家族
+
+P170
+
+
+
+### 6.2 AMS启动过程
+
+P171
+
+
+
+### 6.3 AMS与应用程序进程
+
+P174
+
+
+
+### 6.4 AMS重要的数据结构
+
+#### 6.4.1 解析ActivityRecord
+
+P177
+
+#### 6.4.2 解析TaskRecord
+
+P177
+
+#### 6.4.3 解析ActivityStack
+
+P178
+
+
+
+### 6.5 Activity栈管理
+
+#### 6.5.1 Activity任务栈模型
+
+P181
+
+<img src="./Android进阶解密.assets/image-20240109111305976.png" alt="image-20240109111305976" style="zoom:67%;" />
+
+#### 6.5.2 Launch Mode
+
+P182
+
+#### 6.5.3 Intent的FLAG
+
+P182
+
+#### 6.5.4 taskAffinity
+
+P185
+
+
+
+## 7 WindowManager
+
+### 7.1 Window、WindowManager和WMS
+
+P187
+
+
+
+### 7.2 WindowManager的关联类
+
+P188
+
+
+
+### 7.3 Window的属性
+
+#### 7.3.1 Window的类型和现实次序
+
+P193
+
+#### 7.3.2 Window的标志
+
+P195
+
+#### 7.3.3 软键盘相关模式
+
+P196
+
+
+
+### 7.4 Window的操作
+
+#### 7.4.1 系统窗口的添加过程
+
+P197
+
+#### 7.4.2 Activity的添加过程
+
+P202
+
+#### 7.4.3 Window的更新过程
+
+P203
 
 
 
 
 
+## 8 WindowManagerService
 
+### 8.1 WMS的职责
 
-
+P207
 
