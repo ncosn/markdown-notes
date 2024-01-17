@@ -639,7 +639,7 @@ void registerServerSocket(String socketName) {
 }
 ```
 
-在注释1处拼接Socket的名称，其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处将fullSocketName 转换为环境变量的值，再在注释 3处转换为文件描述符的参数。在注释 4 处创建文件描述符，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处创建 LocalServerSocket，也就是服务器端的 Socket,并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
+在注释1处**拼接Socket的名称**，其中ANDROID SOCKET PREFIX的值为“ANDROIDSOCKET_”，socketName 的值是传进来的值，等于“zygote”，因此fullSocketName 的值为ANDROID SOCKET zygote”。在注释2处**将fullSocketName 转换为环境变量的值**，再在注释 3处转换为**文件描述符的参数**。在注释 4 处创建**文件描述符**，并在注释 5 处传入此前转换的文件操作符参数。在注释 6 处**创建 LocalServerSocket，也就是服务器端的 Socket**，并将文件操作符作为参数传进去。在 Zygote 进程将 SystemServer进程启动后，就会在这个服务器端的Socket 上等待AMS请求Zygote进程来创建新的应用程序进程。
 
 **2、启动SystemServer进程**
 
@@ -4452,7 +4452,289 @@ P203
 
 ## 8 WindowManagerService
 
-### 8.1 WMS的职责
 
-P207
+
+
+
+
+
+
+
+
+
+
+
+## 10 Java虚拟机
+
+### 10.1 概述
+
+我们常说的JDK包含了Java语言、Java虚拟机和Java API类库这三部分，是Java程序开发的最小环境。而JRE包含了Java API中的Java SE API子集和Java虚拟机这两部分，是Java程序运行的标准环境。那么可以看出Java虚拟机的重要性，它是整个Java平台的基石，是Java语言编译代码的运行平台。你可以把Java虚拟机看做一个抽象的计算机，它有各种指令集和各种运行时数据区域。虽然叫Java虚拟机，但其实在它之上运行的语言可不仅仅是Java，还包括Kotlin、Groovy、Scala、Jython等。
+
+#### 10.1.1 JAVA虚拟机家族
+
+**1.HotSpot VM**
+
+Oracle JDK和OpenJDK中自带的虚拟机，是最主流的和使用范围最广的Java虚拟机。介绍Java虚拟机的技术文章，如果不做特殊说明大部分都是介绍HotSpot VM的。
+
+**2.J9 VM**
+
+IBM开发的虚拟机，目前是其主力发展的Java虚拟机。
+
+**3.Zing VM**
+
+以Oracle的HotSpot VM为基础，改进了许多影响延迟的细节
+
+
+
+#### 10.1.2 Java虚拟机执行流程
+
+<img src="./Android进阶解密.assets/image-20240116100705590.png" alt="image-20240116100705590" style="zoom:67%;" />
+
+从图10-1可以发现Java虚拟机执行流程分为两大部分，分别是编译时环境和运行时环境，当一个Java文件经过Java编译器编译后会生成Class文件，这个Class文件会由Java虚拟机来进行处理。Java虚拟机与Java语言没有什么必然的联系，它只与特定的二进制文件：Class文件有关。因此无论任何语言只要能编译成Class文件，就可以被Java虚拟机识别并执行，如图10-2所示。
+
+<img src="./Android进阶解密.assets/image-20240116100935267.png" alt="image-20240116100935267" style="zoom:67%;" />
+
+
+
+### 10.2 Java虚拟机结构
+
+<img src="./Android进阶解密.assets/image-20240116101023003.png" alt="image-20240116101023003" style="zoom:67%;" />
+
+从图10-3可以看出Java虚拟机结构包括运行时数据区域、执行引擎、本地库接口和本地方法库，其中类加载子系统并不属于Java虚拟机的内部结构。图10-3中标出了线程共享和线程私有的区域，比如方法区和Java堆就是所有线程共享的数据区域。下面针对图10-3来介绍Android开发需要掌握的Class文件格式和运行时数据区域。
+
+#### 10.2.1 Class文件格式
+
+Java文件被编译后生成了Class文件，这种二进制格式文件不依赖于特定的硬件和操作系统。每一个Class文件中都对应着唯一的类或者接口的定义信息，但是类或者接口并不一定定义在文件中，比如类和接口可以通过类加载器来直接生成。10.1.2节中我们知道无论任何语言只要能编译成Class文件，就可以被Java虚拟机识别并执行，可见Class文件的重要性，了解它对于我们学习那些基于Java虚拟机的语言会有很大帮助。下面我们来学习Class文件格式，如下所示：
+
+```java
+ClassFile {
+    u4 magic;//魔数，固定值为0XCAFEBABE，用来判断当前文件是不是能被 Java 虚拟机处理的Class 文件
+    u2 minor_version;//副版本号
+    u2 major_version;//主版本号
+    u2 constant_pool_count;//常量池计数器
+    cp_info constant_pool[constant_pool_count-1]; //常量池
+    u2 access_flags;//类和接口层次的访问标志
+    u2 this_class;//类索引
+    u2 super_class;//父类索引
+    u2 interfaces_count;//接口计数器
+    u2 interfaces[interfaces count];//接口表
+    u2 fields_count;//字段计数器
+    field_info fields[fields count];//字段表
+    u2 methods_count;//方法计数器
+    method_info methods[methods count];//方法表
+    u2 attributes_count;//属性计数器
+    attribute_info attributes[attributes count]; //属性表
+}
+```
+
+可以看到ClassFile具有很强的描述能力，包含了很多关键信息，其中u4、u2表示“基本数据类型”，class文件的基本数据类型如下所示。
+
++ u1：1字节，无符号类型
++ u2：2字节，无符号类型
++ u4：4字节，无符号类型
++ u8：8字节，无符号类型
+
+
+
+
+
+### 10.4 对象的堆内存布局
+
+对象在堆内存的布局分为三个区域，分别是**对象头（Header）**、**实例数据（Instance Data）**、**对齐填充（Padding）**。
+
++ 对象头：包括两部分信息，分别是*Mark World*和*元数据指针*，**`Mark World`**用来存储对象运行时的数据，比如HashCode、锁状态标志、GC分代年龄、线程持有的锁等。**元数据指针**用于指向方法区中的目标类的元数据，通过元数据可以确定对象的具体类型。
+
++ 实例数据：用于存储对象中的各种类型的字段信息（包括从父类继承来的）
++ 对齐填充：对齐填充不一定存在，起到了占位符的作用
+
+<img src="./Android进阶解密.assets/image-20240115160114030.png" alt="image-20240115160114030" style="zoom:67%;" />
+
+
+
+### 10.5 oop-klass模型
+
+oop-klass模型是用来描述Java对象实例的一种模型，它分为两个部分，**`OOP`**（Ordinary Object Pointer）指的是普通对象指针，用的表示对象的实例信息；**`klass`**用来描述元数据。
+
+HotSpot中采用了oop-klass模型，oop实际是一个家族，Java虚拟机内部会定义很多oop类型，如下所示：
+
+hotspot/src/share/vm/oops/oopsHierarchy.hpp
+
+```c++
+typedef class markOopDesc* markOop;//oop标记对象
+typedef class oopDesc* oop;//oop家族的顶级父类
+typedef class instanceOopDesc* instanceOop;//表示Java类实例
+typedef class arrayOopDesc* arrayOop;//引用类型数组对象
+typedef class objArrayOopDesc* objArrayOop;//引用类型数组对象
+typedef class  typedefArrayOopDesc* typeArrayOop;//基本类型数组对象
+```
+
+其中 oopDesc 是所有 oop 的顶级父类，arrayOopDesc 是 objArrayOopDesc 和 typedefArrayOopDesc 的父类。instanceOopDesc 和 arrayOopDesc都可以用来描述对象头。
+
+在 oopsHierarchy.hpp 中还定义了 klass 家族：
+
+hotspot/src/share/vm/oops/oopsHierarchy.hpp
+
+```c++
+class Klass;//klass家族的父类
+class InstanceKlass;//描述Java类的数据结构
+class InstanceMirrorKlass;//描述java.lang.Class实例
+class InstanceClassLoaderKlass;//特殊的InstanceKlass，不添加任何字段
+class InstanceRefKlass;//描述java.lang.ref.Reference的子类
+class ArrayKlass;//描述Java数组信息
+class ObjArrayKlass;//描述Java中引用类型数组的数据结构
+class TypeArrayKlass;//描述Java中基本类型数组的数据结构
+```
+
+其中 Klass 是 klass 家族的父类 (不是顶级父类)，ArrayKlass 是 OjArrayKlass 和TypeArrayKlass 的父类，可以发现 oop 家族的成员和 klass 家族的成员有着对应的关系，比如instanceOopDesc 对应InstanceKlass，objArrayOopDesc 对应 ObiArrayKlass。这里我们拿instanceOopDesc 和 InstanceKlass 的对应关系来举例，其他的对应关系也是类似的。instanceOopDesc的定义如下所示：
+
+hotspot/src/share/vm/oops/instanceOop.hpp 
+
+```c++
+class instanceOopDesc : public oopDesc {
+    public:
+    static int header size() { return sizeof(instanceOopDesc)/HeapWordSize; }
+    static int base offset in bytes() {
+        return (UseCompressedOops && UseCompressedClassPointers) ?
+            klass gap offset in bytes() :
+        	sizeof(instanceOopDesc);
+    }
+    static bool contains field offset(int offset,int nonstatic field size) {
+        int base in bytes = base offset in bytes();
+        return (offset >= base in bytes &&
+                (offset-base in bytes) < nonstatic field size * heapOopSize);
+    }
+};
+```
+
+可以看处instanceOopDesc继承了oopDesc：
+
+openjdk/hotspot/src/share/vm/oops/oop.hpp
+
+```c++
+class oopDesc {
+    friend class VMStructs;
+    private:
+    volatile markOop _mark;
+    union _metadata {
+        Klass* _klass;
+        narrowKlass _compressed_klass;
+    } _metadata;
+    //Fast access to barrier set. Must be initialized.
+    static BarrirSet* _bs;
+    ···
+}
+```
+
+oopDesc包含了两个数据成员：**`mark`**和 **`_metadata`**。其中markOop类型的mark对象指得是前面讲到的Mark World。metadata是一个共用体，其中klass是普通指针，\_compressed\_klass是压缩类指针，它们就是10.4节讲到的元数据指针，这两个指针根据对应关系都会指向instanceKlass，instanceKlass可以用来描述元数据，我们接着往下看，instanceKlass的代码如下所示：
+
+```c++
+class InstanceKlass : public Klass {
+    ···
+    enum ClassState {
+        allocated,
+        loaded,
+        linked,
+        being_initialized,
+        fully_initialized,
+        initialization_error
+    };
+    ···
+}
+```
+
+instanceKlass继承自klass，枚举ClassState用来表示对象的加载进度，klass中定义的部分字段如下所示：
+
+```c++
+jint _layout_helper;//对象布局的综合描述符
+Symbol* _name;//类名
+oop _java_mirror;//类的镜像类
+Klass* _super;//父类
+Klass* _subklass;//第一个子类
+Klass* _next_sibling;//下一个兄弟节点
+jint _modifier_flags;//修饰符标识
+AccessFlags _access_flags;//访问权限标识
+```
+
+可以看到klass描述了元数据，具体来说就是Java类Java虚拟机中对等的C++类型描述，这样继承自klass的instanceKlass同样可以用来描述元数据。了解了opp-klass模型，我们就可以分析Java虚拟机是如何通过栈帧中的对象引用找到对应的对象实例的，如图10.6所示。
+
+<img src="./Android进阶解密.assets/image-20240115165243127.png" alt="image-20240115165243127" style="zoom:67%;" />
+
+
+
+### 10.6 垃圾标记算法
+
+
+
+
+
+### 10.7 Java对象在虚拟机中的生命周期
+
+在Java对象被类加载器加载到虚拟机中后，Java对象在Java虚拟机中有7个阶段。
+
+**1、创建阶段（Created）**
+
+创建阶段的具体步骤为：
+
+（1）为对象分配存储空间
+
+（2）构造对象
+
+（3）从超类到子类对static成员进行初始化
+
+（4）递归调用超类的构造方法
+
+（5）调用子类的构造方法
+
+**2、应用阶段（In Use）**
+
+当对象被创建，并分配给变量赋值时，状态就切换到了应用阶段。这一阶段的对象至少要具有一个强引用，或者显式地使用软引用、弱引用或者虚引用。
+
+**3、不可见阶段（Invisible）**
+
+在程序中找不到对象的任何强引用，比如程序的执行已经超出了该对象的作用域。在不可见阶段，对象仍可能被特殊的强引用GC Roots持有着，比如对象被本地方法栈中JNI引用或被运行中的线程引用等。
+
+**4、不可达阶段（Unreachable）**
+
+在程序中找不到对象的任何强引用，并且垃圾收集器发现对象不可达
+
+**5、收集阶段（Collected）**
+
+垃圾收集器已经发现对象不可达，并且垃圾收集器已经准备好要对该对象的内存空间重新进行分配，这个时候如果该对象重写了finalize方法，则会调用该方法。
+
+**6、终结阶段（Finalize）**
+
+在对象执行完finalize方法后任然处于不可达状态，或者对象没有重写finalize方法，则该对象进入终结阶段，并等待垃圾收集器回收该对象空间。
+
+**7、对象空间重新分配阶段（Deallocated）**
+
+当垃圾收集器对对象的内存空间进行回收或者再分配时，这个对象就会彻底消失。
+
+
+
+### 10.8 垃圾收集算法
+
+
+
+
+
+#### 10.8.4 分代收集算法
+
+新生代（Young Generation）和老年代（Tenured Generation），其中新生代再细分为Eden空间、From  Survivor空间和To Survivor空间。因为Eden空间中大多数对象生命周期很短，所以新生代的控件划分并不是均分的，HotSpot虚拟机默认Eden空间和两个Survivor空间所占的比例为8:1:1。
+
+**分代收集**
+
+根据Java堆区的划分，垃圾收集的类型分为两种，它们分别如下。
+
++ Minor Collection：新生代垃圾收集
++ Full Collection：对老年代进行收集，又可以称作Major Collection，Full Collection通常情况下会伴随至少一次的Minor Collection，它的收集频率较低，耗时较长。
+
+当执行一次Minor Collection时，Eden空间的存活对象会被复制到To Survivor空间，并且之前经过一次Minor Collection并在From Survivor空间存活的仍年轻的对象也会复制到To Survivor空间。有两种情况Eden空间和From Survivor空间存活的对象不会复制到To Survivor空间，而是晋升到老年代：一种是存活的对象分代年龄超过`-XX:MaxTenuringThreshold`（用于控制对象经历过多少次Minor GC才晋升到老年代）所指定的阈值。另一种是ToSurvivor空间容量达到阈值。当所有存活的对象被复制到To Survivor空间，或者晋升到老年代，也就意味着Eden空间和From Survivor空间剩下的都是可回收对象，如图10-11所示。
+
+![image-20240116091821188](./Android进阶解密.assets/image-20240116091821188.png)
+
+这个时候GC执行MinorCollection，Eden空间和From Survivor空间都会被清空，新生代中存活的对象都存放在To Survivor空间。接下来将From Survivor空间和To Survivor空间互换位置，也就是此前的From Survivor成为了现在的To Survivor空间，每次Survivor空间互换都要保证To Survivor是空的，这就是复制算法新生代中的应用。在老年代则会采用标记-压缩算法或者标记-清除算法。
+
+> 这里可以参考[Java运行时数据区]()中垃圾收集算法的有关内容。
+
+
 

@@ -1951,7 +1951,7 @@ implementation 'com.android.support:appcompat-v7:28.0.0'
 
 
 
-### 9.7 Gradle的库依赖
+### 9.7 Gradle的依赖传递
 
 随着Gradle依赖的库越来越多，就会产生一些问题，比如依赖冲突，为了解决依赖冲突，我们首先需要了解Gradle的库依赖管理的几个技术点。
 
@@ -2029,7 +2029,7 @@ dependencies {
 }
 ```
 
-强制当前模块的okio的版本为2.1.0，一用依赖项检查来查看retrofit的依赖如下所示。
+强制当前模块的okio的版本为2.1.0，使用依赖项检查来查看retrofit的依赖如下所示。
 
 ```
 +--- com.squareup.retrofit2:retrofit:2.6.0
