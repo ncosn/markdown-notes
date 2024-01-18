@@ -2315,7 +2315,7 @@ public void startActivityForResult(@RequiresPermission Intent intent,int request
 }
 ```
 
-注释1处的mParent是Activity类型，表示当前Activity的父类。因为根Activity还没有创建出来，mParent==null成立。接着调用Instrumentation的execStartActivity方法，**Instrumentation主要用来监控应用程序和系统的交互**，execStartActivity方法的代码如下：
+注释1处的mParent是Activity类型，表示当前Activity的父类。因为根Activity还没有创建出来，mParent==null成立。接着调用Instrumentation的execStartActivity方法，**`Instrumentation`主要用来监控应用程序和系统的交互**，execStartActivity方法的代码如下：
 
 frameworks/base/core/java/android/app/Instrumentation.java
 
