@@ -4101,7 +4101,7 @@ Application getApplication() {
 
 <img src="./Android进阶解密.assets/image-20240104101750660.png" alt="image-20240104101750660" style="zoom:67%;" />
 
-ActivityThread是应用程序进程的主线程管理类，它的内部类ApplicationThread会调用scheduleLaunchActivity方法来启动Activity，scheduleLaunchActivity方法如下所示：
+**ActivityThread是应用程序进程的主线程管理类**，它的内部类ApplicationThread会调用scheduleLaunchActivity方法来启动Activity，scheduleLaunchActivity方法如下所示：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
