@@ -453,7 +453,7 @@ public class IActivityManagerProxy implements InvocationHandler {
         this.mActivityManager = activityManager;
     }
     @Override
-    public Object invoke(Object o, Method method, Objectp[] args) throw Throwable {
+    public Object invoke(Object o, Method method, Object[] args) throw Throwable {
         if ("startActivity".equals(method.getName())) {//1       
             Intent intent = null;
             int index = 0;
@@ -680,7 +680,7 @@ private void finsh(int finishTask) {
 }
 ```
 
-finish方法的调用链和Activity的启动过程是类似的，在注释1处调用AMS的finishActivity方法，接着是AMS通过ApplicationThread调用ActivityThread，ActivityThread向H类发送DESTROY_ACTIVITY类型的消息，H类接收到这个消息会执行handleDestroyActivity方法，handleDestroyActivity方法又调用了performDestroyActivity方法，如下所示：
+finish方法的调用链和Activity的启动过程是类似的，在注释1处调**用AMS的finishActivity方法**，接着是**AMS通过ApplicationThread调用ActivityThread**，**ActivityThread向H类发送DESTROY_ACTIVITY类型的消息**，H类接收到这个消息会执行handleDestroyActivity方法，handleDestroyActivity方法又调用了performDestroyActivity方法，如下所示：
 
 frameworks/base/core/java/android/app/ActivityThread.java
 
@@ -716,4 +716,141 @@ private Activity performlaunchActivity(ActivityClientRecord r, Intent customInte
 }
 ```
 
-在注释1处根据Activity的类名用ClassLoader加载Activity，接着调用Activity的attach方法，将r.token赋值给Activity的成员变量mToken。在注释2处将ActivityClientRecord根据r.token保存在mActivities中（mActivities类型为ArrayMap\<IBinder,ActivityClientRecord\>），再结合Activity的finish方法的注释1处，可以得出结论：AMS和ActivityThread之间的通信采用了token来对Activity进行标识，并且此后的Activity的生命周期处理也是根据token来对Activity进行标识的。回到这个例子来，我们在Activity启动时用插件TargetActivity替换占坑SubActivity，这一过程在performLaunchActivity方法调用之前，因此注释2处的r.token指向的是TargetActivity，在performDestroyActivity的注释1处获取的就是代表TargetActivity的ActivityClientRecord，可见TargetActivity是具有生命周期的。
+在注释1处**根据Activity的类名用ClassLoader加载Activity**，接着**调用Activity的attach方法**，将r.token赋值给Activity的成员变量mToken。在注释2处将ActivityClientRecord根据r.token保存在mActivities中（mActivities类型为ArrayMap\<IBinder,ActivityClientRecord\>），再结合Activity的finish方法的注释1处，可以得出结论：**AMS和ActivityThread之间的通信采用了`token`来对Activity进行标识，并且此后的Activity的生命周期处理也是根据token来对Activity进行标识的**。回到这个例子来，我们在Activity启动时用插件TargetActivity替换占坑SubActivity，这一过程在performLaunchActivity方法调用之前，因此注释2处的r.token指向的是TargetActivity，在performDestroyActivity的注释1处获取的就是代表TargetActivity的ActivityClientRecord，可见TargetActivity是具有生命周期的。
+
+#### 15.4.3 Hook Instrumentation方案实现
+
+Hook Instrumentation实现要比Hook IActivityManager实现简单一些，示例代码会和Hook IActivityManager实现有重复，重复的部分这里不再赘述。Hook Instrumentation实现同样也需要用到占坑Activity，与Hook IActivityManager实现不同的是，用占坑Activity替换插件以及还原插件Activity的地方不同。Activity的startActivity方法调用时序图如图15-9所示。
+
+从图15-9可以发现，在Activity通过AMS校验前，会调用Activity的startActivityForResult方法：
+
+frameworks/base/core/java/android/app/Activity.java
+
+```java
+public void startActivityForResult(@RequiresPermission Intent intent, int requestCode, @Nullable Bundle options) {
+    if (mParent == null) {
+        options = transferSpringboardActivityOptions(options);
+        Instrumentation.ActivityResult ar = mInstrumentation.execStartActivity(this,mMainThread.getApplicationThread(),mToken,this,intent,requestCode,options);
+        ···
+    } else {
+        ···
+    }
+}
+```
+
+![image-20240122091511174](./Hook技术.assets/image-20240122091511174.png)
+
+在startActivityForResult方法中调用了Instrumentation的execStartActivity方法来激活Activity生命周期。
+
+图15-8中会调用ActivityThread的performLaunchActivity方法，如下所示：
+
+frameworks/base/core/java/android/app/ActivityThread.java
+
+```java
+private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
+    ···
+    //创建要启动Activity的上下文环境
+    ContextImpl appContext = createBaseContextForActivity(r);
+    Activity activity = null;
+    try {
+        java.lang.ClassLoader cl = appContext.getClassLoader();
+        //用类加载器来创建Activity实例
+        activity = mInstrumentation.newActivity(cl,component.getClassName(),r.intent);//1
+        ···
+    } catch (Exception e) {
+        ···
+    }
+    ···
+    return activity;
+}
+```
+
+在注释1处调用了mInstrumentation的newActivity方法，其内部会用类加载器来创建Activity的实例。看到这里我们可以得到方案，就是在Instrumentation的execStartActivity方法中用占坑StubActivity来通过AMS的验证，在Instrumentation的newActivity方法中还原TargetActivity，这两步操作都和Instrumentation有关，因此我们可以用自定义的Instrumentation来替换掉mInstrumentation。首先我们自定义一个Instrumentation，在execStartActivity方法中将启动的TargetActivity替换为StubActivity，如下所示：
+
+InstrumentationProxy.java
+
+```java
+public class InstrumentationProxy extends Instrumentation {
+    private Instrumentation mInstrumentation;
+    private PackageManager mPackageManager;
+    public InstrumentationProxy(Instrumentation instrumentation,PackageManagerpackageManager){
+        mInstrumentation = instrumentation;
+        mPackageManager = packageManager;
+    }
+    public ActivityResult execStartActivity(Context who，IBinder contextThread, IBinder token，Activity target,Intent intent,int requestCode, Bundle options) {
+        List<ResolveInfo> infos = mPackageManager,queryIntentActivities(intent，PackageManager.MATCH ALL);
+        if (infos == null   infos.size() == 0) {
+            intent.putExtra(HookHelper.TARGET INTENST_NAME,intent.getComponent() .getClassName ());//1
+            intent.setClassName(who
+"com.example.liuwangshu.pluginactivity.StubActivity");//2
+        }
+        try{
+            Method execMethod = Instrumentation,class.getDeclaredMethod("execStartActivity"，Context.class，IBinder.class，IBinder.class，Activity.class,Intent.class, int.class,Bundle.class);
+            return (ActivityResult) execMethod.invoke(mInstrumentation， who,contextThread，token, target, intent， requestCode, options);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+}
+```
+
+首先查找要启动的Activity是否已经在AndroidManifest.xml中注册了，如果没有注册就在注释1处将要启动的Activity(TargetActivity)的ClassName保存起来用于后面还原TargetActivity，接着在注释2处替换要启动的Activity为StubActivity，最后通过反射调用execStartActivity方法，这样就可以用StubActivity通过AMS的验证。在InstrumentationProxy的newActivity方法中还原TargetActivity，如下所示：
+
+InstrumentationProxy.java
+
+```java
+public Activity newActivity(ClassLoader cl, String className,Intent intent) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    String intentName = intent.getStringExtra(HookHepler.TARGET_INTENT_NAME);
+    if(!TextUtils.isEmpty(intentName)) {
+        return super.newActivity(cl,intentName,intent);
+    }
+    return super.newActivity(cl,className,intent);
+}
+```
+
+在newActivity方法中创建了此前保存的TargetActivity，完成了还原TargetActivity。编写hookInstrumentation方法，用InstrumentationProxy替换mInstrumentation：
+
+HookHelper.java
+
+```java
+public static void hookInstrumentation(Context context) throws Exception {
+    Class<?> contextImplClass = Class.forName("android.app.ContextImpl");
+    Field mMainThreadField = FieldUtil.getField(contextImplClass, "mMainThread");//1
+    Object activityThread = mMainThreadField.get(context);//2
+    Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+    Field mInstrumentationField = FieldUtil.getField(activityThreadClass,"mInstrumentation");//3
+    FieldUtil.setField(activityThreadClass,activityThread,"mInstrumentation",new InstrumentationProxy((Instrumentation) mInstrumentationField.get(activityThread), context.getPackageManager()));
+}
+```
+
+在注释1处获取ContextImpl类的ActivityThread类型的mMainThread字段，在注释2处获取当前上下文环境的ActivityThread对象。在注释3处获取ActivityThread类中的mInstrumentation字段，最后用InstrumentationProxy来替换mInstrumentation。在MyApplication的attachBaseContext方法中调用HookHelper的hookInstrumentation方法，运行程序，当我们单击“启动插件”按钮时，发现启动的是插件TargetActivity。
+
+#### 15.4.4 总结
+
+这一节我们学习了启动插件 Activity 的原理，主要的方案就是先用一个在AndroidManifest.xml中注册的Activity 来进行占坑，用来通过AMS的校验，接着在合适的时机用插件 Activity 替换占坑的 Activity。为了更好地讲解启动插件 Activity 的原理，本节省略了插件 Activity 的加载逻辑，直接创建一个 TargetActivity 来代表已经加载进来的插件Activity。同时这一节使我们更好地理解了Activity 的启动过程。
+
+
+
+### 15.5 Service插件化
+
+Service插件化和Activity插件化的原理有些不同，我们先来回顾一下Service的启动过程。
+
+
+
+### 15.6 ContentProvider插件化
+
+
+
+### 15.7 BroadcastReceiver插件化
+
+
+
+### 15.8 资源的插件化
+
+
+
+### 15.9 so的插件化
+
+
+
