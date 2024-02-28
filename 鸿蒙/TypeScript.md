@@ -1340,3 +1340,1033 @@ Facebook
 |      |      |
 |      |      |
 
+
+
+
+
+### TypeScript Map 对象
+
+
+
+### TypeScript 元组
+
+
+
+### TypesScript 联合类型
+
+联合类型（Union Types）可以通过管道(|)将变量设置多种类型，赋值时可以根据设置的类型来赋值。
+
+**注意**：只能赋值指定的类型，如果赋值其它类型就会报错。
+
+创建联合类型的语法格式如下：
+
+```ts
+Type1|Type2|Type3 
+```
+
+声明一个联合类型：
+
+```ts
+var val:string|number
+val = 12
+console.log("数字为 "+ val)
+val = "Runoob"
+console.log("字符串为 " + val)
+```
+
+输出结果为：
+
+```
+数字为 12
+字符串为 Runoob
+```
+
+如果赋值其它类型就会报错：
+
+```ts
+var val:string|number 
+val = true 
+```
+
+也可以将联合类型作为函数参数使用：
+
+```ts
+function disp(name:string|string[]) {
+    if(typeof name == "string") {
+        console.log(name)
+    } else {
+        var i;
+        for(i = 0;i<name.length;i++) {
+            console.log(name[i])
+        }
+    }
+}
+disp("Runoob")
+console.log("输出数组....")
+disp(["Runoob","Google","Taobao","Facebook"])
+```
+
+输出结果为：
+
+```
+Runoob
+输出数组....
+Runoob
+Google
+Taobao
+Facebook
+```
+
+#### 联合类型数组
+
+我们也可以将数组声明为联合类型：
+
+```ts
+var arr:number[]|string[];
+var i:number;
+arr = [1,2,4]
+console.log("**数字数组**")
+for(i = 0;i<arr.length;i++) {
+    console.log(arr[i])
+}
+arr = ["Runoob","Google","Taobao"]
+console.log("**字符串数组**")
+for(i = 0;i<arr.length;i++) {
+    console.log(arr[i])
+}
+```
+
+输出结果为：
+
+```
+**数字数组**
+1
+2
+4
+**字符串数组**
+Runoob
+Google
+Taobao
+```
+
+
+
+### TypeScript 接口
+
+接口是一系列抽象方法的声明，是一些方法特征的集合，这些方法都应该是抽象的，需要由具体的类去实现，然后第三方就可以通过这组抽象方法调用，让具体的类执行具体的方法。
+
+TypeScript 接口定义如下：
+
+```ts
+interface interface_name { 
+}
+```
+
+以下实例中，我们定义了一个接口 IPerson，接着定义了一个变量 customer，它的类型是 IPerson。
+
+customer 实现了接口 IPerson 的属性和方法。
+
+```ts
+interface IPerson { 
+    firstName:string, 
+    lastName:string, 
+    sayHi: ()=>string 
+} 
+ 
+var customer:IPerson = { 
+    firstName:"Tom",
+    lastName:"Hanks", 
+    sayHi: ():string =>{return "Hi there"} 
+} 
+ 
+console.log("Customer 对象 ") 
+console.log(customer.firstName) 
+console.log(customer.lastName) 
+console.log(customer.sayHi())  
+ 
+var employee:IPerson = { 
+    firstName:"Jim",
+    lastName:"Blakes", 
+    sayHi: ():string =>{return "Hello!!!"} 
+} 
+ 
+console.log("Employee  对象 ") 
+console.log(employee.firstName) 
+console.log(employee.lastName)
+```
+
+需要注意接口不能转换为 JavaScript。 它只是 TypeScript 的一部分。
+
+输出结果为：
+
+```
+Customer 对象
+Tom
+Hanks
+Hi there
+Employee  对象
+Jim
+Blakes
+```
+
+#### 联合类型和接口
+
+以下实例演示了如何在接口中使用联合类型：
+
+```ts
+interface RunOptions {
+    program:string;
+    commandline:string[]|string|(()=>string);
+}
+
+// commandline 是字符串
+var options:RunOptions = {program:"test1",commandline:"Hello"};
+console.log(options.commandline)
+
+// commandline 是字符串数组
+options = {program:"test1",commandline:["Hello","World"]};
+console.log(options.commandline[0]);
+console.log(options.commandline[1]);
+
+// commandline 是一个函数表达式
+options = {program:"test1",commandline:()=>{return "**Hello World**";}};
+
+var fn:any = options.commandline;
+console.log(fn());
+```
+
+输出结果为：
+
+```
+Hello
+Hello
+World
+**Hello World**
+```
+
+
+
+#### 接口和数组
+
+接口中我们可以将数组的**索引值和元素设置为不同类型**，**索引值可以是数字或字符串**。
+
+设置元素为字符串类型：
+
+```ts
+interface namelist {
+    [index:number]:string
+}
+
+// 类型一致，正确
+var list2:namelist = ["Google","Runoob","Taobao"]
+// 错误元素 1 不是 string 类型
+var list2:namelist = ["Runoob",1,"Taobao"]
+```
+
+如果使用了其他类型会报错：
+
+```ts
+interface namelist {
+    [index:number]:string
+}
+
+// 类型一致，正确
+var list2:namelist = ["Google","Runoob","Taobao"]
+// 错误元素 1 不是 string 类型
+var list2:namelist = ["John",1,"Bran"]
+```
+
+执行后报错如下，显示类型不一致：
+
+```
+test.ts:8:30 - error TS2322: Type 'number' is not assignable to type 'string'.
+
+8 var list2:namelist = ["John",1,"Bran"]
+                               ~
+
+  test.ts:2:4
+    2    [index:number]:string
+         ~~~~~~~~~~~~~~~~~~~~~
+    The expected type comes from this index signature.
+
+
+Found 1 error.
+```
+
+
+
+```ts
+interface ages {
+    [index:string]:number
+}
+
+var agelist:ages;
+// 类型正确
+agelist["runoob"] = 15
+
+// 类型错误，输出  error TS2322: Type '"google"' is not assignable to type 'number'. 
+// agelist[2] = "google"
+```
+
+
+
+#### 接口继承
+
+接口继承就是说接口可以通过其他接口来扩展自己。
+
+Typescript 允许接口继承多个接口。
+
+继承使用关键字 **extends**。
+
+单接口继承语法格式：
+
+```ts
+Child_interface_name extends super_interface_name
+```
+
+多接口继承语法格式：
+
+```ts
+Child_interface_name extends super_interface1_name, super_interface2_name,…,super_interfaceN_name
+```
+
+继承的各个接口使用逗号 **,** 分隔。
+
+**单继承实例**
+
+```ts
+interface Person { 
+   age:number 
+} 
+ 
+interface Musician extends Person { 
+   instrument:string 
+} 
+ 
+var drummer = <Musician>{}; 
+drummer.age = 27 
+drummer.instrument = "Drums" 
+console.log("年龄:  "+drummer.age)
+console.log("喜欢的乐器:"+drummer.instrument)
+```
+
+输出结果为：
+
+```
+年龄:  27
+喜欢的乐器:  Drums
+```
+
+**多继承实例**
+
+```ts
+interface IParent1 { 
+    v1:number 
+} 
+ 
+interface IParent2 { 
+    v2:number 
+} 
+ 
+interface Child extends IParent1, IParent2 { } 
+var Iobj:Child = { v1:12, v2:23} 
+console.log("value 1: "+Iobj.v1+" value 2: "+Iobj.v2)
+```
+
+输出结果为：
+
+```
+value 1: 12 value 2: 23
+```
+
+
+
+### TypeScript 类
+
+TypeScript 是面向对象的 JavaScript。
+
+类描述了所创建的对象共同的属性和方法。
+
+TypeScript 支持面向对象的所有特性，比如 类、接口等。
+
+TypeScript 类定义方式如下：
+
+```ts
+class class_name { 
+    // 类作用域
+}
+```
+
+定义类的关键字为 class，后面紧跟类名，类可以包含以下几个模块（类的数据成员）：
+
+- **字段** − 字段是类里面声明的变量。字段表示对象的有关数据。
+- **构造函数** − 类实例化时调用，可以为类的对象分配内存。
+- **方法** − 方法为对象要执行的操作。
+
+实例
+
+创建一个Person类：
+
+```ts
+class Person {
+}
+```
+
+#### 创建类的数据成员
+
+以下实例我们声明了类 Car，包含字段为 engine，构造函数在类实例化后初始化字段 engine。
+
+this 关键字表示当前类实例化的对象。注意构造函数的参数名与字段名相同，this.engine 表示类的字段。
+
+此外我们也在类中定义了一个方法 disp()。
+
+```ts
+class Car { 
+    // 字段 
+    engine:string; 
+ 
+    // 构造函数 
+    constructor(engine:string) { 
+        this.engine = engine 
+    }  
+ 
+    // 方法 
+    disp():void { 
+        console.log("发动机为 :   "+this.engine) 
+    } 
+}
+```
+
+#### 创建实例化对象
+
+我们使用 new 关键字来实例化类的对象，语法格式如下：
+
+```
+var object_name = new class_name([ arguments ])
+```
+
+类实例化时会调用构造函数，例如：
+
+```
+var obj = new Car("Engine 1")
+```
+
+类中的字段属性和方法可以使用 **.** 号来访问：
+
+```
+// 访问属性
+obj.field_name 
+
+// 访问方法
+obj.function_name()
+```
+
+以下实例创建来一个 Car 类，然后通过关键字 new 来创建一个对象并访问属性和方法：
+
+```ts
+class Car {
+    // 字段
+    engine:string;
+    // 构造函数
+    constructor(engine:string) {
+        this.engine = engine
+    }        
+    // 方法
+    disp():void {
+        console.log("函数中显示发动机型号:"+this.engine)
+    }
+}
+// 创建一个对象
+var obj = new Car("XXSY1")
+// 访问字段
+console.log("读取发动机型号 :  "+obj.engine)
+// 访问方法
+obj.disp()
+```
+
+输出结果为：
+
+```
+读取发动机型号 :  XXSY1
+函数中显示发动机型号  :   XXSY1
+```
+
+#### 类的继承
+
+TypeScript 支持继承类，即我们可以在创建类的时候继承一个已存在的类，这个已存在的类称为父类，继承它的类称为子类。
+
+类继承使用关键字 **extends**，子类除了不能继承父类的私有成员(方法和属性)和构造函数，其他的都可以继承。
+
+**TypeScript 一次只能继承一个类，不支持继承多个类，但 TypeScript 支持多重继承（A 继承 B，B 继承 C）**。
+
+语法格式如下：
+
+```ts
+class child_class_name extends parent_class_name
+```
+
+类的继承：实例中创建了 Shape 类，Circle 类继承了 Shape 类，Circle 类可以直接使用 Area 属性：
+
+```ts
+class Shape { 
+   Area:number 
+   
+   constructor(a:number) { 
+      this.Area = a 
+   } 
+} 
+ 
+class Circle extends Shape { 
+   disp():void { 
+      console.log("圆的面积:  "+this.Area) 
+   } 
+}
+  
+var obj = new Circle(223); 
+obj.disp()
+```
+
+输出结果为：
+
+```
+圆的面积:  223
+```
+
+需要注意的是子类只能继承一个父类，TypeScript 不支持继承多个类，但支持多重继承，如下实例：
+
+```ts
+class Root { 
+   str:string; 
+} 
+ 
+class Child extends Root {} 
+class Leaf extends Child {} // 多重继承，继承了 Child 和 Root 类
+ 
+var obj = new Leaf(); 
+obj.str ="hello" 
+console.log(obj.str)
+```
+
+输出结果为：
+
+```
+hello
+```
+
+#### 继承类的方法重写
+
+类继承后，子类可以对父类的方法重新定义，这个过程称之为方法的重写。
+
+其中 super 关键字是对父类的直接引用，该关键字可以引用父类的属性和方法。
+
+```ts
+class PrinterClass { 
+   doPrint():void {
+      console.log("父类的 doPrint() 方法。") 
+   } 
+} 
+ 
+class StringPrinter extends PrinterClass { 
+   doPrint():void { 
+      super.doPrint() // 调用父类的函数
+      console.log("子类的 doPrint()方法。")
+   } 
+}
+```
+
+输出结果为：
+
+```
+父类的 doPrint() 方法。
+子类的 doPrint()方法。
+```
+
+#### static 关键字
+
+static 关键字用于定义类的数据成员（属性和方法）为静态的，静态成员可以直接通过类名调用。
+
+```ts
+class StaticMem {
+    static num:number;
+    static disp():void {
+        console.log("num 值为 "+ StaticMem.num)
+    }
+}
+StaticMem.num = 12     // 初始化静态变量
+StaticMem.disp()       // 调用静态方法
+```
+
+输出结果为：
+
+```
+num 值为 12
+```
+
+#### instanceof 运算符
+
+instanceof 运算符用于判断对象是否是指定的类型，如果是返回 true，否则返回 false。
+
+```ts
+class Person{ }
+var obj = new Person()
+var isPerson = obj instanceof Person;
+console.log("obj 对象是 Person 类实例化来的吗？ " + isPerson);
+```
+
+输出结果为：
+
+```
+obj 对象是 Person 类实例化来的吗？ true
+```
+
+#### 访问控制修饰符
+
+TypeScript 中，可以使用访问控制符来保护对类、变量、方法和构造方法的访问。TypeScript 支持 3 种不同的访问权限。
+
+- **public（默认）** : 公有，可以在任何地方被访问。
+- **protected** : 受保护，可以被其自身以及其子类访问。
+- **private** : 私有，只能被其定义所在的类访问。
+
+以下实例定义了两个变量 str1 和 str2，str1 为 public，str2 为 private，实例化后可以访问 str1，如果要访问 str2 则会编译错误。
+
+```ts
+class Encapsulate {
+    str1:string = "hello"
+    private str2:string = "world"
+}
+var obj = new Encapsulate()
+console.log(obj.str1)     // 可访问
+console.log(obj.str2)   // 编译错误， str2 是私有的
+```
+
+#### 类和接口
+
+类可以实现接口，使用关键字 implements，并将 interest 字段作为类的属性使用。
+
+以下实例中 AgriLoan 类实现了 ILoan 接口：
+
+```ts
+interface ILoan { 
+   interest:number 
+} 
+ 
+class AgriLoan implements ILoan { 
+   interest:number 
+   rebate:number 
+   
+   constructor(interest:number,rebate:number) { 
+      this.interest = interest 
+      this.rebate = rebate 
+   } 
+} 
+ 
+var obj = new AgriLoan(10,1) 
+console.log("利润为 : "+obj.interest+"，抽成为 : "+obj.rebate )
+```
+
+输出结果为：
+
+```
+利润为 : 10，抽成为 : 1
+```
+
+
+
+### TypeScript 对象
+
+对象是包含一组键值对的实例。 值可以是标量、函数、数组、对象等，如下实例：
+
+```ts
+var object_name = { 
+    key1: "value1", // 标量
+    key2: "value",  
+    key3: function() {
+        // 函数
+    }, 
+    key4:["content1", "content2"] //集合
+}
+```
+
+以上对象包含了标量，函数，集合(数组或元组)。
+
+```ts
+var sites = { 
+   site1:"Runoob", 
+   site2:"Google" 
+}; 
+// 访问对象的值
+console.log(sites.site1) 
+console.log(sites.site2)
+```
+
+输出结果为：
+
+```
+Runoob
+Google
+```
+
+#### TypeScript 类型模板
+
+假如我们在 JavaScript 定义了一个对象：
+
+```ts
+var sites = {
+    site1:"Runoob",
+    site2:"Google"
+};
+```
+
+这时如果我们想在对象中添加方法，可以做以下修改：
+
+```ts
+sites.sayHello = function(){ return "hello";}
+```
+
+如果在 TypeScript 中使用以上方式则会出现编译错误，因为Typescript 中的对象必须是特定类型的实例。
+
+```ts
+var sites = {
+    site1: "Runoob",
+    site2: "Google",
+    sayHello: function () { } // 类型模板
+};
+sites.sayHello = function () {
+    console.log("hello " + sites.site1);
+};
+sites.sayHello();
+```
+
+输出结果为：
+
+```
+hello Runoob
+```
+
+此外对象也可以作为一个参数传递给函数，如下实例：
+
+```ts
+var sites = {
+    site1:"Runoob",
+    site2:"Google",
+};
+var invokesites = function(obj: { site1:string, site2 :string }) {
+    console.log("site1 :"+obj.site1)
+    console.log("site2 :"+obj.site2)
+}
+invokesites(sites)
+```
+
+输出结果为：
+
+```
+site1 :Runoob
+site2 :Google
+```
+
+
+
+### TypeScript 泛型
+
+泛型（Generics是一种编程语言特性，允许在定义函数、类、接口等使用占位符来表示类型，而不是具体的类型）。
+
+泛型是一种在编程可重用、灵活且类型安全的代码时非常有用的功能。
+
+使用泛型的主要目的是为了处理不特定类型的数据，使得代码可以适用于多种数据类型而不失去类型检查。
+
+泛型的优势包括：
+
++ **代码重用：** 可以编写与特定类型无关的通用代码，提高代码的复用性。
++ **类型安全：** 在编译时进行类型检查，避免在运行时出现类型错误。
++ **抽象性：** 允许编写更抽象和通用的代码，适应不同的数据类型和数据结构。
+
+#### 泛型标识符
+
+在泛型中，通常使用一些约定俗成的标识符，比如常见的 `T`（表示 Type）、`U`、`V` 等，但实际上你可以使用任何标识符。
+
+**T**: 代表 "Type"，是最常见的泛型类型参数名。
+
+```ts
+function identity<T>(arg: T): T {
+    return arg;
+}
+```
+
+**K, V**: 用于表示键（Key）和值（Value）的泛型类型参数。
+
+```ts
+interface KeyValuePair<K, V> {
+    key: K;
+    value: V;
+}
+```
+
+**E**: 用于表示数组元素的泛型类型参数。
+
+```ts
+function printArray<E>(arr: E[]): void {
+    arr.forEach(item => console.log(item));
+}
+```
+
+**R**: 用于表示函数返回值的泛型类型参数。
+
+```ts
+function getResult<R>(value: R): R {
+    return value;
+}
+```
+
+**U, V**: 通常用于表示第二、第三个泛型类型参数。
+
+```ts
+function combine<U, V>(first: U, second: V): string {
+    return `${first} ${second}`;
+}
+```
+
+这些标识符是约定俗成的，实际上你可以选择任何符合标识符规范的名称。关键是使得代码易读和易于理解，所以建议在泛型类型参数上使用描述性的名称，以便于理解其用途。
+
+#### 泛型函数
+
+#### 泛型接口
+
+#### 泛型类
+
+#### 泛型约束
+
+#### 泛型与默认值
+
+
+
+### TypeScript 命名空间
+
+命名空间一个最明确的目的就是解决重名问题。
+
+假设这样一种情况，当一个班上有两个名叫小明的学生时，为了明确区分它们，我们在使用名字之外，不得不使用一些额外的信息，比如他们的姓（王小明，李小明），或者他们父母的名字等等。
+
+命名空间定义了标识符的可见范围，一个标识符可在多个命名空间中定义，它在不同命名空间中的含义是互不相干的。这样，在一个新的命名空间中可定义任何标识符，它们不会与任何已有的标识符发生冲突，因为已有的定义都处于其他命名空间中。
+
+TypeScript 中命名空间使用 **namespace** 来定义，语法格式如下：
+
+```ts
+namespace SomeNameSpaceName {
+    export interface ISomeInterfaceName {	}
+    export class SomeClassName {	}
+}
+```
+
+以上定义了一个命名空间 SomeNameSpaceName，如果我们需要在外部可以调用 SomeNameSpaceName 中的类和接口，则需要在类和接口添加 **export** 关键字。
+
+要在另外一个命名空间调用语法格式为：
+
+```ts
+SomeNameSpaceName.SomeClassName;
+```
+
+如果一个命名空间在一个单独的 TypeScript 文件中，则应使用三斜杠 /// 引用它，语法格式如下：
+
+```ts
+/// <reference path = "SomeFileName.ts" />
+```
+
+以下实例演示了命名空间的使用，定义在不同文件中：
+
+IShape.ts文件代码：
+
+```ts
+namespace Drawing { 
+    export interface IShape { 
+        draw(); 
+    }
+}
+```
+
+Circle.ts文件代码：
+
+```ts
+/// <reference path = "IShape.ts" /> 
+namespace Drawing { 
+    export class Circle implements IShape { 
+        public draw() { 
+            console.log("Circle is drawn"); 
+        }  
+    }
+}
+```
+
+Triangle.ts文件代码：
+
+```ts
+/// <reference path = "IShape.ts" /> 
+namespace Drawing { 
+    export class Triangle implements IShape { 
+        public draw() { 
+            console.log("Triangle is drawn"); 
+        } 
+    } 
+}
+```
+
+TestShape.ts文件代码：
+
+```ts
+/// <reference path = "IShape.ts" />   
+/// <reference path = "Circle.ts" /> 
+/// <reference path = "Triangle.ts" />  
+function drawAllShapes(shape:Drawing.IShape) { 
+    shape.draw(); 
+} 
+drawAllShapes(new Drawing.Circle());
+drawAllShapes(new Drawing.Triangle());
+```
+
+使用 node 命令查看输出结果为：
+
+```
+$ node app.js
+Circle is drawn
+Triangle is drawn
+```
+
+#### 嵌套命名空间
+
+命名空间支持嵌套，即你可以将命名空间定义在另外一个命名空间里头。
+
+```ts
+namespace namespace_name1 {
+    export namespace namespace_name2 {
+        export class class_name {    }
+    }
+}
+```
+
+成员的访问使用点号 **.** 来实现，如下实例：
+
+Invoice.ts 文件代码：
+
+```ts
+namespace Runoob {
+    export namespace invoiceApp {
+        export class Invoice {
+            public calculateDiscount(price: number) {
+                return price * .40;
+            }
+        }
+    }
+}
+```
+
+InvoiceTest.ts 文件代码：
+
+```ts
+/// <reference path = "Invoice.ts" />
+var invoice = new Runoob.invoiceApp.Invoice();
+console.log(invoice.calculateDiscount(500));
+```
+
+使用 node 命令查看输出结果为：
+
+```
+$ node app.js
+200
+```
+
+
+
+### TypeScript 模块
+
+TypeScript 模块的设计理念是可以更换的组织代码。
+
+模块是在其自身的作用域里执行，并不是在全局作用域，这意味着定义在模块里面的变量、函数和类等在模块外部是不可见的，除非明确地使用 export 导出它们。类似地，我们必须通过 import 导入其他模块导出的变量、函数、类等。
+
+两个模块之间的关系是通过在文件级别上使用 import 和 export 建立的。
+
+模块使用模块加载器去导入其它的模块。 在运行时，模块加载器的作用是在执行此模块代码前去查找并执行这个模块的所有依赖。 大家最熟知的JavaScript模块加载器是服务于 Node.js 的 CommonJS 和服务于 Web 应用的 Require.js。
+
+此外还有有 SystemJs 和 Webpack。
+
+模块导出使用关键字 **export** 关键字，语法格式如下：
+
+```ts
+// 文件名 : SomeInterface.ts 
+export interface SomeInterface { 
+   // 代码部分
+}
+```
+
+要在另外一个文件使用该模块就需要使用 **import** 关键字来导入:
+
+```ts
+import someInterfaceRef = require("./SomeInterface");
+```
+
+**实例**
+
+IShape.ts文件代码：
+
+```ts
+/// <reference path = "IShape.ts" /> 
+export interface IShape { 
+   draw(); 
+}
+```
+
+Circle.ts文件代码：
+
+```ts
+import shape = require("./IShape"); 
+export class Circle implements shape.IShape { 
+   public draw() { 
+      console.log("Cirlce is drawn (external module)"); 
+   } 
+}
+```
+
+Triangle.ts文件代码：
+
+```ts
+import shape = require("./IShape"); 
+export class Triangle implements shape.IShape { 
+   public draw() { 
+      console.log("Triangle is drawn (external module)"); 
+   } 
+}
+```
+
+TestShape.ts文件代码：
+
+```ts
+import shape = require("./IShape"); 
+import circle = require("./Circle"); 
+import triangle = require("./Triangle");  
+ 
+function drawAllShapes(shapeToDraw: shape.IShape) {
+   shapeToDraw.draw(); 
+} 
+ 
+drawAllShapes(new circle.Circle()); 
+drawAllShapes(new triangle.Triangle());
+```
+
+输出结果为：
+
+```
+Cirlce is drawn (external module)
+Triangle is drawn (external module)
+```
+
+
+
+### TypeScript声明文件
+
+TypeScript 作为 JavaScript 的超集，在开发过程中不可避免要引用其他第三方的 JavaScript 的库。虽然通过直接引用可以调用库的类和方法，但是却无法使用TypeScript 诸如类型检查等特性功能。为了解决这个问题，需要将这些库里的函数和方法体去掉后只保留导出类型声明，而产生了一个描述 JavaScript 库和模块信息的声明文件。通过引用这个声明文件，就可以借用 TypeScript 的各种特性来使用库文件了。
+
+假如我们想使用第三方库，比如 jQuery，我们通常这样获取一个 id 是 foo 的元素：
+
+```ts
+$('#foo');
+// 或
+jQuery('#foo');
+```
+
