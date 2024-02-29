@@ -10,7 +10,7 @@ ArkTS的基本组成
 >
 > 自定义变量不能与基础通用属性/事件名重复
 
-+ 装饰器：用于装饰类、结构、方法以及变量，并赋予其特殊的含义。如上述示例中`@Entry`、`@Component`和`@State`都是装饰器，[@Component](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-create-custom-components.md/#自定义组件的基本结构)表示自定义组件，[@Entry](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-create-custom-components.md/#自定义组件的基本结构)表示该自定义组件为入口组件，[@State](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md/)表示组件中的状态变量，状态变量变化会触发UI刷新。
++ 装饰器：用于装饰类、结构、方法以及变量，并赋予其特殊的含义。如上述示例中`@Entry`、`@Component`和`@State`都是装饰器，[@Component](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-create-custom-components.md/#自定义组件的基本结构)表示**自定义组件**，[@Entry](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-create-custom-components.md/#自定义组件的基本结构)表示该自定义组件为**入口组件**，[@State](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md/)表示组件中的**状态变量**，状态变量变化会触发UI刷新。
 + [UI描述](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-declarative-ui-description.md/)：以声明式的方式来描述UI的结构，例如build()方法中的代码块。
 + [自定义组件](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-create-custom-components.md/)：可复用的UI单元，可组合其他组件，如上述被@Component装饰的struct Hello。
 + 系统组件：ArkUI框架中默认内置的基础和容器组件，可直接被开发者调用，比如示例中的Column、Text、Divider、Button。
@@ -31,7 +31,7 @@ ArkTS的基本组成
 
 - 可组合：允许开发者组合使用系统组件、及其属性和方法。
 - 可重用：自定义组件可以被其他组件重用，并作为不同的实例在不同的父组件或容器中使用。
-- 数据驱动UI更新：通过状态变量的改变，来驱动UI的刷新。
+- 数据驱动UI更新：**通过状态变量的改变，来驱动UI的刷新**。
 
 ### 自定义组件的基本用法
 
@@ -106,7 +106,7 @@ struct ParentComponent {
   }
   ```
 
-- build()函数：build()函数用于定义自定义组件的声明式UI描述，自定义组件必须定义build()函数。
+- build()函数：build()函数用于定义自定义组件的声明式UI描述，**自定义组件必须定义build()函数**。
 
   ```ts
   @Component
@@ -166,13 +166,13 @@ struct MyComponent {
 
 ### 成员函数/变量
 
-自定义组件除了必须要实现build()函数外，还可以实现其他成员函数，成员函数具有以下约束：
+自定义组件除了必须要实现build()函数外，**还可以实现其他成员函数**，成员函数具有以下约束：
 
-- 自定义组件的成员函数为私有的，且不建议声明成静态函数。
+- 自定义组件的**成员函数为私有的**，且**不建议声明成静态函数**。
 
-自定义组件可以包含成员变量，成员变量具有以下约束：
+自定义组件可以包含**成员变量**，成员变量具有以下约束：
 
-- 自定义组件的成员变量为私有的，且不建议声明成静态变量。
+- 自定义组件的**成员变量为私有的**，且**不建议声明成静态变量**。
 - 自定义组件的成员变量本地初始化有些是可选的，有些是必选的。具体是否需要本地初始化，是否需要从父组件通过参数传递初始化子组件的成员变量，请参考[状态管理](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state-management-overview.md/)。
 
 
@@ -211,7 +211,7 @@ struct ParentComponent {
 
 所有声明在build()函数的语言，我们统称为UI描述，UI描述需要遵循一下规则：
 
-+ @Entry装饰的自定义组件，其build()函数下的根节点唯一且必要，且必须为容器组件，其中ForEach禁止作为根节点。@Component装饰的自定义组件，其build()函数下的根节点唯一且必要，可以为非容器组件，其中ForEach禁止作为根节点。
++ `@Entry`装饰的自定义组件，其build()函数下的**根节点唯一且必要，且必须为容器组件**，其中**ForEach禁止作为根节点**。`@Component`装饰的自定义组件，其build()函数下的**根节点唯一且必要，可以为非容器组件**，其中**ForEach禁止作为根节点**。
 
   ```ts
   @Entry
@@ -263,7 +263,7 @@ struct ParentComponent {
   }
   ```
 
-+ 不允许调用没有用@Builder装饰的方法，允许系统组件的参数是TS方法的返回值。
++ **不允许调用没有用@Builder装饰的方法**，**允许系统组件的参数是TS方法的返回值**。
 
   ```ts
   @Component
@@ -620,3 +620,393 @@ struct page {
 - 点击返回按钮，触发页面生命周期Index onBackPress，且触发返回一个页面后会导致当前Index页面被销毁。
 - 最小化应用或者应用进入后台，触发Index onPageHide。当前Index页面没有被销毁，所以并不会执行组件的aboutToDisappear。应用回到前台，执行Index onPageShow。
 - 退出应用，执行Index onPageHide --> MyComponent aboutToDisappear --> Child aboutToDisappear。
+
+
+
+
+
+## @Builder装饰器：自定义构建函数
+
+前面章节介绍了如何创建一个自定义组件。该自定义组件内部UI结构固定，仅与使用方进行数据传递。ArkUI还提供了一种更轻量的UI元素复用机制@Builder，@Builder所装饰的函数遵循build()函数语法规则，开发者可以将重复使用的UI元素抽象成一个方法，在build方法里调用。
+
+为了简化语言，我们将@Builder装饰的函数也称为“自定义构建函数”。
+
+> 说明：
+>
+> 从API version 9开始，该装饰器支持在ArkTS卡片中使用。
+
+### 装饰器使用说明
+
+#### 自定义组件内自定义构建函数
+
+定义的语法：
+
+```ts
+@Builder MyBuilderFunction() {...}
+```
+
+使用方法：
+
+```ts
+this.MyBuilderFunction()
+```
+
+- 允许在自定义组件内定义**一个或多个@Builder方法**，该方法被认为是**该组件的私有、特殊类型的成员函数**。
+- 自定义构建函数**可以在所属组件的build方法和其他自定义构建函数中调用，但不允许在组件外调用**。
+- 在自定义函数体中，**this指代当前所属组件**，**组件的状态变量可以在自定义构建函数内访问**。建议通过this访问自定义组件的状态变量而不是参数传递。
+
+#### 全局自定义构建函数
+
+定义的语法：
+
+```ts
+@Builder function MyGlobalBuilderFunction() { ... }
+```
+
+使用方法：
+
+```ts
+MyGlobalBuilderFunction()
+```
+
+- 全局的自定义构建函数可以被整个应用获取，不允许使用this和bind方法。
+- 如果不涉及组件状态变化，建议使用全局的自定义构建方法。
+
+
+
+### 参数传递规则
+
+自定义构建函数的参数传递有[按值传递](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-builder.md#按值传递参数)和[按引用传递](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-builder.md#按引用传递参数)两种，均需遵守以下规则：
+
+- 参数的类型必须与参数声明的类型一致，不允许undefined、null和返回undefined、null的表达式。
+- 在@Builder修饰的函数内部，**不允许改变参数值**。
+- @Builder内UI语法遵循[UI语法规则](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-create-custom-components.md#build函数)。
+- 只有**传入一个参数，且参数需要直接传入对象字面量**才会**按引用传递该参数**，其余传递方式均为按值传递。
+
+#### 按引用参数传递
+
+按引用传递参数时，传递的参数可为状态变量，且状态变量的改变会引起@Builder方法内的UI刷新。
+
+```ts
+class Tmp {
+  paramA1: string = ''
+  paramB1: string = ''
+}
+
+@Builder function overBuilder(params : Tmp) {...}
+```
+
+```ts
+class Tmp {
+  paramA1: string = ''
+}
+
+@Builder function overBuilder(params: Tmp) {
+  Row() {
+    Text(`UseStateVarByReference: ${params.paramA1} `)
+  }
+}
+@Entry
+@Component
+struct Parent {
+  @State label: string = 'Hello';
+  build() {
+    Column() {
+      // 在Parent组件中调用overBuilder的时候，将this.label引用传递给overBuilder
+      overBuilder({ paramA1: this.label })
+      Button('Click me').onClick(() => {
+        // 点击“Click me”后，UI从“Hello”刷新为“ArkUI”
+        this.label = 'ArkUI';
+      })
+    }
+  }
+}
+```
+
+**按引用传递参数时，如果在@Builder方法内调用自定义组件，ArkUI提供$$作为按引用传递参数的范式。**
+
+```ts
+class Tmp {
+  paramA1: string = ''
+  paramB1: string = ''
+}
+
+@Builder function overBuilder($$ : Tmp) {...}
+```
+
+```ts
+class Tmp {
+  paramA1: string = ''
+}
+
+@Builder function overBuilder($$: Tmp) {
+  Row() {
+    Column() {
+      Text(`overBuilder===${$$.paramA1}`)
+      HelloComponent({message: $$.paramA1})
+    }
+  }
+}
+
+@Component
+struct HelloComponent {
+  @Link message: string;
+
+  build() {
+    Row() {
+      Text(`HelloComponent===${this.message}`)
+    }
+  }
+}
+
+@Entry
+@Component
+struct Parent {
+  @State label: string = 'Hello';
+  build() {
+    Column() {
+      // Pass the this.label reference to the overBuilder component when the overBuilder component is called in the Parent component.
+      overBuilder({paramA1: this.label})
+      Button('Click me').onClick(() => {
+        // After Click me is clicked, the UI text changes from Hello to ArkUI.
+        this.label = 'ArkUI';
+      })
+    }
+  }
+}
+```
+
+#### 按值传递参数
+
+调用@Builder装饰的函数默认按值传递。当传递的参数为状态变量时，状态变量的改变不会引起@Builder方法内的UI刷新。所以当使用状态变量的时候，推荐使用[按引用传递](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-builder.md#按引用传递参数)。
+
+```ts
+@Builder function overBuilder(paramA1: string) {
+  Row() {
+    Text(`UseStateVarByValue: ${paramA1} `)
+  }
+}
+@Entry
+@Component
+struct Parent {
+  @State label: string = 'Hello';
+  build() {
+    Column() {
+      overBuilder(this.label)
+    }
+  }
+}
+```
+
+
+
+## @BuilderParam装饰器：引用@Builder函数
+
+当开发者创建了自定义组件，并想对该组件添加特定功能时，例如在自定义组件中添加一个点击跳转操作。若直接在组件内嵌入事件方法，将会导致所有引入该自定义组件的地方均增加了该功能。为解决此问题，ArkUI引入了@BuilderParam装饰器，@BuilderParam用来装饰指向@Builder方法的变量，开发者可在初始化自定义组件时对此属性进行赋值，为自定义组件增加特定的功能。该装饰器用于声明任意UI描述的一个元素，类似slot占位符。
+
+### 装饰器使用说明
+
+#### 初始化@BuilderParam装饰的方法
+
+@BuilderParam装饰的方法只能被自定义构建函数（@Builder装饰的方法）初始化。
+
++ 使用所属自定义组件的自定义构建函数或者全局的自定义构建函数，在本地初始化@BuilderParam。
+
+  ```ts
+  @Builder function overBuilder() {}
+  
+  @Component
+  struct Child {
+    @Builder doNothingBuilder() {};
+  
+    // 使用自定义组件的自定义构建函数初始化@BuilderParam
+    @BuilderParam customBuilderParam: () => void = this.doNothingBuilder;
+    // 使用全局自定义构建函数初始化@BuilderParam
+    @BuilderParam customOverBuilderParam: () => void = overBuilder;
+    build(){}
+  }
+  ```
+
++ 用父组件自定义构建函数初始化子组件@BuilderParam装饰的方法。
+
+  ```ts
+  @Component
+  struct Child {
+    @Builder customBuilder() {}
+    // 使用父组件@Builder装饰的方法初始化子组件@BuilderParam
+    @BuilderParam customBuilderParam: () => void = this.customBuilder;
+  
+    build() {
+      Column() {
+        this.customBuilderParam()
+      }
+    }
+  }
+  
+  @Entry
+  @Component
+  struct Parent {
+    @Builder componentBuilder() {
+      Text(`Parent builder `)
+    }
+  
+    build() {
+      Column() {
+        Child({ customBuilderParam: this.componentBuilder })
+      }
+    }
+  }
+  ```
+
++ 需注意this指向正确。
+
+  以下示例中，Parent组件在调用this.componentBuilder()时，this指向其所属组件，即“Parent”。@Builder componentBuilder()传给子组件@BuilderParam customBuilderParam，在Child组件中调用this.customBuilderParam()时，this指向在Child的label，即“Child”。
+
+  ```ts
+  @Component
+  struct Child {
+    label: string = `Child`
+    @Builder customBuilder() {}
+    @Builder customChangeThisBuilder() {}
+    @BuilderParam customBuilderParam: () => void = this.customBuilder;
+    @BuilderParam customChangeThisBuilderParam: () => void = this.customChangeThisBuilder;
+  
+    build() {
+      Column() {
+        this.customBuilderParam()
+        this.customChangeThisBuilderParam()
+      }
+    }
+  }
+  
+  @Entry
+  @Component
+  struct Parent {
+    label: string = `Parent`
+  
+    @Builder componentBuilder() {
+      Text(`${this.label}`)
+    }
+  
+    build() {
+      Column() {
+        this.componentBuilder()
+        Child({ customBuilderParam: this.componentBuilder, customChangeThisBuilderParam: ():void=>{this.componentBuilder()} })
+      }
+    }
+  }
+  ```
+
+  
+
+### 使用场景
+
+#### 参数初始化组件
+
+@BuilderParam装饰的方法可以是有参数和无参数的两种形式，需与指向的@Builder方法类型匹配。@BuilderParam装饰的方法类型需要和@Builder方法类型一致。
+
+```ts
+class Tmp{
+  label:string = ''
+}
+@Builder function overBuilder($$ : Tmp) {
+  Text($$.label)
+    .width(400)
+    .height(50)
+    .backgroundColor(Color.Green)
+}
+
+@Component
+struct Child {
+  label: string = 'Child'
+  @Builder customBuilder() {}
+  // 无参数类型，指向的componentBuilder也是无参数类型
+  @BuilderParam customBuilderParam: () => void = this.customBuilder;
+  // 有参数类型，指向的overBuilder也是有参数类型的方法
+  @BuilderParam customOverBuilderParam: ($$ : Tmp) => void = overBuilder;
+
+  build() {
+    Column() {
+      this.customBuilderParam()
+      this.customOverBuilderParam({label: 'global Builder label' } )
+    }
+  }
+}
+
+@Entry
+@Component
+struct Parent {
+  label: string = 'Parent'
+
+  @Builder componentBuilder() {
+    Text(`${this.label}`)
+  }
+
+  build() {
+    Column() {
+      this.componentBuilder()
+      Child({ customBuilderParam: this.componentBuilder, customOverBuilderParam: GlobalBuilder1 })
+    }
+  }
+}
+```
+
+#### 尾随闭包初始化组件
+
+在自定义组件中使用@BuilderParam装饰的属性时也可通过尾随闭包进行初始化。在初始化自定义组件时，组件后紧跟一个大括号“{}”形成尾随闭包场景。
+
+> **说明：**
+>
+> - 此场景下自定义组件内有且仅有一个使用@BuilderParam装饰的属性。
+> - 此场景下自定义组件不支持使用通用属性。
+
+开发者可以将尾随闭包内的内容看做@Builder装饰的函数传给@BuilderParam。示例如下：
+
+```ts
+// xxx.ets
+@Component
+struct CustomContainer {
+  @Prop header: string = '';
+  @Builder closerBuilder(){}
+  // 使用父组件的尾随闭包{}(@Builder装饰的方法)初始化子组件@BuilderParam
+  @BuilderParam closer: () => void = this.closerBuilder
+
+  build() {
+    Column() {
+      Text(this.header)
+        .fontSize(30)
+      this.closer()
+    }
+  }
+}
+
+@Builder function specificParam(label1: string, label2: string) {
+  Column() {
+    Text(label1)
+      .fontSize(30)
+    Text(label2)
+      .fontSize(30)
+  }
+}
+
+@Entry
+@Component
+struct CustomContainerUser {
+  @State text: string = 'header';
+
+  build() {
+    Column() {
+      // 创建CustomContainer，在创建CustomContainer时，通过其后紧跟一个大括号“{}”形成尾随闭包
+      // 作为传递给子组件CustomContainer @BuilderParam closer: () => void的参数
+      CustomContainer({ header: this.text }) {
+        Column() {
+          specificParam('testA', 'testB')
+        }.backgroundColor(Color.Yellow)
+        .onClick(() => {
+          this.text = 'changeHeader';
+        })
+      }
+    }
+  }
+}
+```
