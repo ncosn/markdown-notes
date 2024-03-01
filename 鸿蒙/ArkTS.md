@@ -1010,3 +1010,1018 @@ struct CustomContainerUser {
   }
 }
 ```
+
+
+
+## @Styles装饰器：定义组件重用样式
+
+如果每个组件的样式都需要单独设置，在开发过程中会出现大量代码在进行重复样式设置，虽然可以复制粘贴，单位了代码简洁性和后续方便维护，我们推出了可以提炼公共样式进行服用的装饰器@Styles。
+
+@Styles装饰器可以将多条样式设置提炼成一个方法，直接在组件声明的位置调用。通过@Styles装饰器可以快速定义并服用自定义样式。用于快速定义并服用自定义样式。
+
+### 装饰器使用说明
+
++ 当前@Styles仅支持[通用属性](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-universal-attributes-size.md)和[通用事件](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-universal-events-click.md)。
+
++ @Styles方法不支持参数，反例如下。
+
+  ```ts
+  // 反例： @Styles不支持参数
+  @Styles function globalFancy (value: number) {
+    .width(value)
+  }
+  ```
+
++ @Styles可以定义在组件内或全局，在全局定义时需在方法名前面添加function关键字，组件内定义时则不需要添加function关键字。
+
+> 只能在当前文件内使用，不支持export
+
+```ts
+// 全局
+@Styles function functionName() { ... }
+
+// 在组件内
+@Component
+struct FancyUse {
+  @Styles fancy() {
+    .height(100)
+  }
+}
+```
+
++ 定义在组件内的@Styles可以通过this访问组件的常量和状态变量，并可以在@Styles里通过事件来改变状态变量的值，示例如下：
+
+  ```ts
+  @Component
+  struct FancyUse {
+    @State heightValue: number = 100
+    @Styles fancy() {
+      .height(this.heightValue)
+      .backgroundColor(Color.Yellow)
+      .onClick(() => {
+        this.heightValue = 200
+      })
+    }
+  }
+  ```
+
++ 组件内@Styles的优先级高于全局@Styles。框架优先找当前组件内的@Styles，如果找不到，则会全局查找。
+
+
+
+### 使用场景
+
+以下示例中演示了组件内@Styles和全局@Styles的用法。
+
+```ts
+// 定义在全局的@Styles封装的样式
+@Styles function globalFancy  () {
+  .width(150)
+  .height(100)
+  .backgroundColor(Color.Pink)
+}
+
+@Entry
+@Component
+struct FancyUse {
+  @State heightValue: number = 100
+  // 定义在组件内的@Styles封装的样式
+  @Styles fancy() {
+    .width(200)
+    .height(this.heightValue)
+    .backgroundColor(Color.Yellow)
+    .onClick(() => {
+      this.heightValue = 200
+    })
+  }
+
+  build() {
+    Column({ space: 10 }) {
+      // 使用全局的@Styles封装的样式
+      Text('FancyA')
+        .globalFancy()
+        .fontSize(30)
+      // 使用组件内的@Styles封装的样式
+      Text('FancyB')
+        .fancy()
+        .fontSize(30)
+    }
+  }
+}
+```
+
+
+
+## Extend装饰器：定义扩展组件样式
+
+在前文的示例中，可以使用@Styles用于样式的扩展，在@Styles的基础上，我们提供了@Extend，用于扩展原生组件样式。
+
+### 装饰器使用说明
+
+#### 语法
+
+```ts
+@Extend(UIComponentName) function functionName { ... }
+```
+
+### 使用规则
+
+- 和@Styles不同，@Extend仅支持在全局定义，不支持在组件内部定义。
+
+> **说明：** 只能在当前文件内使用，不支持export
+
++ 和@Styles不同，@Extend支持封装指定的组件的私有属性和私有事件，以及预定义相同组件的@Extend的方法。
+
+  ```ts
+  // @Extend(Text)可以支持Text的私有属性fontColor
+  @Extend(Text) function fancy () {
+    .fontColor(Color.Red)
+  }
+  // superFancyText可以调用预定义的fancy
+  @Extend(Text) function superFancyText(size:number) {
+      .fontSize(size)
+      .fancy()
+  }
+  ```
+
++ 和@Styles不同，@Extend装饰的方法支持参数，开发者可以在调用时传递参数，调用遵循TS方法传值调用。
+
+  ```ts
+  // xxx.ets
+  @Extend(Text) function fancy (fontSize: number) {
+    .fontColor(Color.Red)
+    .fontSize(fontSize)
+  }
+  
+  @Entry
+  @Component
+  struct FancyUse {
+    build() {
+      Row({ space: 10 }) {
+        Text('Fancy')
+          .fancy(16)
+        Text('Fancy')
+          .fancy(24)
+      }
+    }
+  }
+  ```
+
++ @Extend装饰的方法的参数可以为function，作为Event事件的句柄。
+
+  ```ts
+  @Extend(Text) function makeMeClick(onClick: () => void) {
+    .backgroundColor(Color.Blue)
+    .onClick(onClick)
+  }
+  
+  @Entry
+  @Component
+  struct FancyUse {
+    @State label: string = 'Hello World';
+  
+    onClickHandler() {
+      this.label = 'Hello ArkUI';
+    }
+  
+    build() {
+      Row({ space: 10 }) {
+        Text(`${this.label}`)
+          .makeMeClick(() => {this.onClickHandler()})
+      }
+    }
+  }
+  ```
+
++ @Extend的参数可以为[状态变量](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state-management-overview.md)，当状态变量改变时，UI可以正常的被刷新渲染。
+
+  ```ts
+  @Extend(Text) function fancy (fontSize: number) {
+    .fontColor(Color.Red)
+    .fontSize(fontSize)
+  }
+  
+  @Entry
+  @Component
+  struct FancyUse {
+    @State fontSizeValue: number = 20
+    build() {
+      Row({ space: 10 }) {
+        Text('Fancy')
+          .fancy(this.fontSizeValue)
+          .onClick(() => {
+            this.fontSizeValue = 30
+          })
+      }
+    }
+  }
+  ```
+
+
+
+### 使用场景
+
+以下示例声明了3个Text组件，每个Text组件均设置了fontStyle、fontWeight和backgroundColor样式。
+
+```ts
+@Entry
+@Component
+struct FancyUse {
+  @State label: string = 'Hello World'
+
+  build() {
+    Row({ space: 10 }) {
+      Text(`${this.label}`)
+        .fontStyle(FontStyle.Italic)
+        .fontWeight(100)
+        .backgroundColor(Color.Blue)
+      Text(`${this.label}`)
+        .fontStyle(FontStyle.Italic)
+        .fontWeight(200)
+        .backgroundColor(Color.Pink)
+      Text(`${this.label}`)
+        .fontStyle(FontStyle.Italic)
+        .fontWeight(300)
+        .backgroundColor(Color.Orange)
+    }.margin('20%')
+  }
+}
+```
+
+@Extend将样式组合复用，示例如下。
+
+```ts
+@Extend(Text) function fancyText(weightValue: number, color: Color) {
+  .fontStyle(FontStyle.Italic)
+  .fontWeight(weightValue)
+  .backgroundColor(color)
+}
+```
+
+通过@Extend组合样式后，使得代码更加简洁，增强可读性。
+
+```ts
+@Entry
+@Component
+struct FancyUse {
+  @State label: string = 'Hello World'
+
+  build() {
+    Row({ space: 10 }) {
+      Text(`${this.label}`)
+        .fancyText(100, Color.Blue)
+      Text(`${this.label}`)
+        .fancyText(200, Color.Pink)
+      Text(`${this.label}`)
+        .fancyText(300, Color.Orange)
+    }.margin('20%')
+  }
+}
+```
+
+
+
+## stateStyles：多态样式
+
+@Styles和@Extend仅仅应用于静态页面的样式服用，stateStyles可以依据组件的内部状态的不同，快速设置不同样式。这就是我们本章要介绍的内容stateStyles（又称为：多态样式）。
+
+### 概述
+
+stateStyles是属性方法，可以根据UI内部状态来设置样式，类似于css伪类，但语法不同。ArkUI提供以下五种状态：
+
+- `focused`：获焦态。
+- `normal`：正常态。
+- `pressed`：按压态。
+- `disabled`：不可用态。
+- `selected10+`：选中态。
+
+### 使用场景
+
+#### 基础场景
+
+下面的示例展示了stateStyles最基本的使用场景。Button1处于第一个组件，Button2处于第二个组件。按压时显示为pressed态指定的黑色。使用Tab键走焦，先是Button1获焦并显示为focus态指定的粉色。当Button2获焦的时候，Button2显示为focus态指定的粉色，Button1失焦显示normal态指定的红色。
+
+```ts
+@Entry
+@Component
+struct StateStylesSample {
+  build() {
+    Column() {
+      Button('Button1')
+        .stateStyles({
+          focused: {
+            .backgroundColor(Color.Pink)
+          },
+          pressed: {
+            .backgroundColor(Color.Black)
+          },
+          normal: {
+            .backgroundColor(Color.Red)
+          }
+        })
+        .margin(20)
+      Button('Button2')
+        .stateStyles({
+          focused: {
+            .backgroundColor(Color.Pink)
+          },
+          pressed: {
+            .backgroundColor(Color.Black)
+          },
+          normal: {
+            .backgroundColor(Color.Red)
+          }
+        })
+    }.margin('30%')
+  }
+}
+```
+
+
+
+#### @Styles和stateStyles联合使用
+
+以下示例通过@Styles指定stateStyles的不同状态。
+
+```ts
+@Entry
+@Component
+struct MyComponent {
+  @Styles normalStyle() {
+    .backgroundColor(Color.Gray)
+  }
+
+  @Styles pressedStyle() {
+    .backgroundColor(Color.Red)
+  }
+
+  build() {
+    Column() {
+      Text('Text1')
+        .fontSize(50)
+        .fontColor(Color.White)
+        .stateStyles({
+          normal: this.normalStyle,
+          pressed: this.pressedStyle,
+        })
+    }
+  }
+}
+```
+
+#### 在stateStyles里使用常规变量和状态变量
+
+stateStyles可以通过this绑定组件内的常规变量和状态变量。
+
+```ts
+@Entry
+@Component
+struct CompWithInlineStateStyles {
+  @State focusedColor: Color = Color.Red;
+  normalColor: Color = Color.Green
+
+  build() {
+    Column() {
+      Button('clickMe').height(100).width(100)
+        .stateStyles({
+          normal: {
+            .backgroundColor(this.normalColor)
+          },
+          focused: {
+            .backgroundColor(this.focusedColor)
+          }
+        })
+        .onClick(() => {
+          this.focusedColor = Color.Pink
+        })
+        .margin('30%')
+    }
+  }
+}
+```
+
+Button默认normal态显示绿色，第一次按下Tab键让Button获焦显示为focus态的红色，点击事件触发后，在此按下Tab键让Button获焦，focus态变为粉色。
+
+
+
+## @AnimatableExtend装饰器：定义可动画属性
+
+### 装饰器使用说明
+
+#### 语法
+
+```ts
+@AnimatableExtend(UIComponentName) function functionName(value: typeName) { 
+  .propertyName(value)
+}
+```
+
+
+
+#### 使用场景
+
+折线的动画效果
+
+
+
+状态
+
+
+
+## 状态管理概述
+
+在前文的描述中，我们构建的页面多为静态界面。如果希望构建一个动态的、有交互的界面，就需要引入“状态”的概念。
+
+在声明式UI编程框架中，UI是程序状态的运行结果，用户构建了一个UI模型，其中应用的运行时的状态是参数。当参数改变时，UI作为返回结果，也将进行对应的改变。这些运行时的状态变化所带来的UI的重新渲染，在ArkUI中统称为状态管理机制。
+
+自定义组件拥有变量，变量必须被装饰器装饰才可以成为状态变量，状态变量的改变会引起UI的渲染刷新。如果不使用状态变量，UI只能在初始化时渲染，后续将不会再刷新。 下图展示了State和View（UI）之间的关系。
+
+<img src="./ArkTS.assets/image-20240301113539540.png" alt="image-20240301113539540" style="zoom:50%;" />
+
++ View（UI）：UI渲染，指将build方法内的UI描述和@Builder装饰的方法内的UI描述映射到界面。
++ State：状态，指驱动UI更新的数据。用户通过触发组件的事件方法，改变状态数据。状态数据的改变，引起UI的重新渲染。
+
+
+
+### 基本概念
+
++ 状态变量：被状态装饰器装饰的变量，状态变量值的改变会引起UI的渲染更新。示例：`@State num: number = 1`，其中，@State是状态装饰器，num是状态变量。
++ 常规变量：没有被状态装饰器修饰的变量，通常应用于辅助计算。它的改变永远不会引起UI的刷新。以下示例中increaseBy变量为常规变量。
++ 数据源/同步源：状态变量的原始来源，可以同步给不同的状态数据。通常意义为父组件传给子组件的数据
+
+- 命名参数机制：父组件通过指定参数传递给子组件的状态变量，为父子传递同步参数的主要手段。示例：CompA: ({ aProp: this.aProp })。
+
+- 从父组件初始化：父组件使用命名参数机制，将指定参数传递给子组件。子组件初始化的默认值在有父组件传值的情况下，会被覆盖。示例：
+
+  ```ts
+  @Component
+  struct MyComponent {
+    @State count: number = 0;
+    private increaseBy: number = 1;
+  
+    build() {
+    }
+  }
+  
+  @Component
+  struct Parent {
+    build() {
+      Column() {
+        // 从父组件初始化，覆盖本地定义的默认值
+        MyComponent({ count: 1, increaseBy: 2 })
+      }
+    }
+  }
+  ```
+
+- 初始化子节点：父组件中状态变量可以传递给子组件，初始化子组件对应的状态变量。示例同上。
+
+- 本地初始化：在变量声明的时候赋值，作为变量的默认值。示例：@State count: number = 0。
+
+
+
+### 装饰器总览
+
+ArkUI提供了多种装饰器，通过使用这些装饰器，状态变量不仅可以观察到在组件内的改变，还可以在不同组件层级间传递，比如父子组件、跨组件层级，也可以观察全局范围内的变化。根据状态变量的影响范围，将所有的装饰器可以大致分为：
+
++ 管理组件拥有状态的装饰器：组件级别的状态管理，可以观察组件内变化，和不同组件层级的变化，但需要唯一观察同一个组建树上，即同一个页面内。
++ 管理应用拥有状态的装饰器：应用级别的状态管理，可以观察不同页面，甚至不同UIAbility的状态变化，是应用内全局的状态管理。
+
+从数据的传递形式和同步类型层面看，装饰器也可分为：
+
++ 只读的单向传递：
++ 可变更的双向传递。
+
+图示如下，具体装饰器的介绍，可详见[管理组件拥有的状态](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md)和[管理应用拥有的状态](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-application-state-management-overview.md)。开发者可以灵活地利用这些能力来实现数据和UI的联动。
+
+![image-20240301134648364](./ArkTS.assets/image-20240301134648364.png)
+
+上图中，Components部分的装饰器为组件级别的状态管理，Application部分为应用的状态管理。开发者可以通过[@StorageLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#storagelink)/[@LocalStorageLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#localstoragelink)实现应用和组件状态的双向同步，通过[@StorageProp](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#storageprop)/[@LocalStorageProp](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#localstorageprop)实现应用和组件状态的单向同步。
+
+[管理组件拥有的状态](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md)，即图中Components级别的状态管理：
+
+- [@State](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md)：@State装饰的变量拥有其所属组件的状态，可以作为其子组件单向和双向同步的数据源。当其数值改变时，会引起相关组件的渲染刷新。
+- [@Prop](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md)：`@Prop`装饰的变量可以**和父组件建立单向同步关系**，@Prop装饰的变量是可变的，但修改不会同步回父组件。
+- [@Link](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-link.md)：`@Link`装饰的变量**和父组件构建双向同步关系的状态变量**，父组件会接受来自@Link装饰的变量的修改的同步，父组件的更新也会同步给@Link装饰的变量。
+- [@Provide/@Consume](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-provide-and-consume.md)：@Provide/@Consume装饰的变量用于跨组件层级（多层组件）同步状态变量，可以不需要通过参数命名机制传递，通过alias（别名）或者属性名绑定。
+- [@Observed](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md)：@Observed装饰class，需要观察多层嵌套场景的class需要被@Observed装饰。单独使用@Observed没有任何作用，需要和@ObjectLink、@Prop连用。
+- [@ObjectLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md)：@ObjectLink装饰的变量接收@Observed装饰的class的实例，应用于观察多层嵌套场景，和父组件的数据源构建双向同步。
+
+> **说明：**
+>
+> 仅[@Observed/@ObjectLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md)可以观察嵌套场景，其他的状态变量仅能观察第一层，详情见各个装饰器章节的“观察变化和行为表现”小节。
+
+[管理应用拥有的状态](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-application-state-management-overview.md)，即图中Application级别的状态管理：
+
+- [AppStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md)是应用程序中的一个特殊的单例[LocalStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md)对象，是应用级的数据库，和进程绑定，通过[@StorageProp](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#storageprop)和[@StorageLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#storagelink)装饰器可以和组件联动。
+- AppStorage是应用状态的“中枢”，将需要与组件（UI）交互的数据存入AppStorage，比如持久化数据[PersistentStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-persiststorage.md)和环境变量[Environment](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-environment.md)。UI再通过AppStorage提供的装饰器或者API接口，访问这些数据。
+- 框架还提供了LocalStorage，AppStorage是LocalStorage特殊的单例。LocalStorage是应用程序声明的应用状态的内存“数据库”，通常用于页面级的状态共享，通过[@LocalStorageProp](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#localstorageprop)和[@LocalStorageLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#localstoragelink)装饰器可以和UI联动。
+
+### 其他状态管理功能
+
+[@Watch](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-watch.md)用于监听状态变量的变化。
+
+[$$运算符](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-two-way-sync.md)：给内置组件提供TS变量的引用，使得TS变量和内置组件的内部状态保持同步。
+
+
+
+## @State装饰器：组件内状态
+
+@State装饰的变量，或称为状态变量，一旦变量拥有了状态属性，就和自定义组件的渲染绑定起来。当状态改变时，UI会发生对应的渲染改变。
+
+在状态变量相关装饰器中，@State是最基础的，使变量拥有状态属性的装饰器，它也是大部分状态变量的数据源。
+
+### 概述
+
+@State装饰的变量，与声明式范式中的其他被装饰变量一样，是**私有的**，只能从组件内部访问，**在声明时必须指定其类型和本地初始化**。**初始化也可选择使用命名参数机制从父组件完成初始化**。
+
+@State装饰的变量拥有一下特点：
+
++ @State装饰的变量与子组件中的@Prop装饰变量之间建立单向数据同步，与@Link、@ObjectLink装饰变量之间建立双向数据同步。
++ @State装饰的变量生命周期与其所属自定义组件的生命周期相同。
+
+
+
+### 装饰器使用规则说明
+
+| @State变量装饰器   | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 装饰器参数         | 无                                                           |
+| 同步类型           | 不与父组件中任何类型的变量同步。                             |
+| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。<br /> 支持Date类型。<br /> 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md#观察变化)。<br /> 类型必须被指定。 <br />不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。<br />**说明：**不支持Length、ResourceStr、ResourceColor类型，Length、ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 |
+| 被装饰变量的初始值 | 必须本地初始化。                                             |
+
+
+
+### 变量的传递/访问规则说明
+
+| 传递/访问          | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 从父组件初始化     | 可选，从父组件初始化或者本地初始化。如果从父组件初始化将会覆盖本地初始化。 支持父组件中常规变量（常规变量对@State赋值，只是数值的初始化，常规变量的变化不会触发UI刷新，只有状态变量才能触发UI刷新）、@State、@Link、@Prop、@Provide、@Consume、@ObjectLink、@StorageLink、@StorageProp、@LocalStorageLink和@LocalStorageProp装饰的变量，初始化子组件的@State。 |
+| 用于初始化子组件   | @State装饰的变量支持初始化子组件的常规变量、@State、@Link、@Prop、@Provide。 |
+| 是否支持组件外访问 | 不支持，只能在组件内访问。                                   |
+
+图1 规则化规则图示
+
+![image-20240301143550724](./ArkTS.assets/image-20240301143550724.png)
+
+
+
+### 观察变化和行为表现
+
+并不是状态变量的所有更改都会引起UI刷新，只有可以被框架观察到的修改才会引起UI刷新。本小节将介绍什么样的修改才能被观察到，以及观察到变化后，框架的是怎么引起UI刷新的，即框架的行为表现是什么。
+
+#### 观察变化
+
+- 当装饰的数据类型为`boolean`、`string`、`number`类型时，可以**观察到数值的变化**。
+
+  ```ts
+  // for simple type
+  @State count: number = 0;
+  // value changing can be observed
+  this.count = 1;
+  ```
+
+- 当装饰的数据类型为`class`或者`Object`时，可以**观察到自身的赋值的变化，和其属性赋值的变化**，即Object.keys(observedObject)返回的所有属性。例子如下。 声明ClassA和Model类。
+
+  ```ts
+    class ClassA {
+      public value: string;
+    
+      constructor(value: string) {
+        this.value = value;
+      }
+    }
+    
+    class Model {
+      public value: string;
+      public name: ClassA;
+      constructor(value: string, a: ClassA) {
+        this.value = value;
+        this.name = a;
+      }
+    }
+  ```
+
+  @State装饰的类型是Model
+
+  ```ts
+  // class类型
+  @State title: Model = new Model('Hello', new ClassA('World'));
+  ```
+
+  对@State装饰变量的赋值。
+
+  ```ts
+  // class类型赋值
+  this.title = new Model('Hi', new ClassA('ArkUI'));
+  ```
+
+  对@State装饰变量的属性赋值。
+
+  ```ts
+  // class属性的赋值
+  this.title.value = 'Hi';
+  ```
+
+  嵌套属性的赋值观察不到。
+
+  ```ts
+  // 嵌套的属性赋值观察不到
+  this.title.name.value = 'ArkUI';
+  ```
+
+  >观察不到即不触发UI更新？应该是需要重新渲染。
+
+- 当装饰的对象是`array`时，可以**观察到数组本身的赋值和添加、删除、更新数组的变化**。例子如下。 声明Model类。
+
+  ```ts
+  class Model {
+    public value: number;
+    constructor(value: number) {
+      this.value = value;
+    }
+  }
+  ```
+
+  @State装饰的对象为Model类型数组时。
+
+  ```ts
+  // 数组类型
+  @State title: Model[] = [new Model(11), new Model(1)];
+  ```
+
+  数组自身的赋值可以观察到。
+
+  ```ts
+  // 数组赋值
+  this.title = [new Model(2)];
+  ```
+
+  数组项的赋值可以观察到。
+
+  ```ts
+  // 数组项赋值
+  this.title[0] = new Model(2);
+  ```
+
+  删除数组项可以观察到。
+
+  ```ts
+  // 数组项更改
+  this.title.pop();
+  ```
+
+  新增数组项可以观察到。
+
+  ```ts
+  // 数组项更改
+  this.title.push(new Model(12));
+  ```
+
+  数组项中**属性的赋值观察不到**。
+
+  ```ts
+  // 嵌套的属性赋值观察不到
+  this.title[0].value = 6;
+  ```
+
+- 当装饰的对象是`Date`时，可以**观察到Date整体的赋值**，同时可通过调用Date的接口`setFullYear`, `setMonth`, `setDate`, `setHours`, `setMinutes`, `setSeconds`, `setMilliseconds`, `setTime`, `setUTCFullYear`, `setUTCMonth`, `setUTCDate`, `setUTCHours`, `setUTCMinutes`, `setUTCSeconds`, `setUTCMilliseconds` 更新Date的属性。
+
+  ```ts
+  @Entry
+  @Component
+  struct DatePickerExample {
+    @State selectedDate: Date = new Date('2021-08-08')
+  
+    build() {
+      Column() {
+        Button('set selectedDate to 2023-07-08')
+          .margin(10)
+          .onClick(() => {
+            this.selectedDate = new Date('2023-07-08')
+          })
+        Button('increase the year by 1')
+          .margin(10)
+          .onClick(() => {
+            this.selectedDate.setFullYear(this.selectedDate.getFullYear() + 1)
+          })
+        Button('increase the month by 1')
+          .margin(10)
+          .onClick(() => {
+            this.selectedDate.setMonth(this.selectedDate.getMonth() + 1)
+          })
+        Button('increase the day by 1')
+          .margin(10)
+          .onClick(() => {
+            this.selectedDate.setDate(this.selectedDate.getDate() + 1)
+          })
+        DatePicker({
+          start: new Date('1970-1-1'),
+          end: new Date('2100-1-1'),
+          selected: this.selectedDate
+        })
+      }.width('100%')
+    }
+  }
+  ```
+
+#### 框架行为
+
+- 当状态变量被改变时，查询依赖该状态变量的组件；
+- 执行依赖该状态变量的组件的更新方法，组件更新渲染；
+- 和该状态变量不相关的组件或者UI描述不会发生重新渲染，从而实现页面渲染的按需更新。
+
+### 使用场景
+
+#### 装饰简单类型的变量
+
+以下示例为@State装饰的简单类型，count被@State装饰成为状态变量，count的改变引起Button组件的刷新：
+
+- 当状态变量count改变时，查询到只有Button组件关联了它；
+- 执行Button组件的更新方法，实现按需刷新。
+
+```ts
+@Entry
+@Component
+struct MyComponent {
+  @State count: number = 0;
+
+  build() {
+    Button(`click times: ${this.count}`)
+      .onClick(() => {
+        this.count += 1;
+      })
+  }
+}
+```
+
+#### 装饰class对象类型的变量
+
+- 自定义组件MyComponent定义了被@State装饰的状态变量count和title，其中title的类型为自定义类Model。如果count或title的值发生变化，则查询MyComponent中使用该状态变量的UI组件，并进行重新渲染。
+- EntryComponent中有多个MyComponent组件实例，第一个MyComponent内部状态的更改不会影响第二个MyComponent。
+
+```ts
+class Model {
+  public value: string;
+
+  constructor(value: string) {
+    this.value = value;
+  }
+}
+
+@Entry
+@Component
+struct EntryComponent {
+  build() {
+    Column() {
+      // 此处指定的参数都将在初始渲染时覆盖本地定义的默认值，并不是所有的参数都需要从父组件初始化
+      MyComponent({ count: 1, increaseBy: 2 })
+        .width(300)
+      MyComponent({ title: new Model('Hello World 2'), count: 7 })
+    }
+  }
+}
+
+@Component
+struct MyComponent {
+  @State title: Model = new Model('Hello World');
+  @State count: number = 0;
+  private increaseBy: number = 1;
+
+  build() {
+    Column() {
+      Text(`${this.title.value}`)
+        .margin(10)
+      Button(`Click to change title`)
+        .onClick(() => {
+          // @State变量的更新将触发上面的Text组件内容更新
+          this.title.value = this.title.value === 'Hello ArkUI' ? 'Hello World' : 'Hello ArkUI';
+        })
+        .width(300)
+        .margin(10)
+
+      Button(`Click to increase count = ${this.count}`)
+        .onClick(() => {
+          // @State变量的更新将触发该Button组件的内容更新
+          this.count += this.increaseBy;
+        })
+        .width(300)
+        .margin(10)
+    }
+  }
+}
+```
+
+从该示例中，我们可以了解到@State变量首次渲染的初始化流程：
+
+1. 使用默认的本地初始化：
+
+   ```ts
+   @State title: Model = new Model('Hello World');
+   @State count: number = 0;
+   ```
+
+2. 对于@State来说，命名参数机制传递的值并不是必选的，如果没有命名参数传值，则使用本地初始化的默认值：
+
+   ```ts
+   class C1 {
+      public count:number;
+      public increaseBy:number;
+      constructor(count: number, increaseBy:number) {
+        this.count = count;
+        this.increaseBy = increaseBy;
+     }
+   }
+   let obj = new C1(1, 2)
+   MyComponent(obj)
+   ```
+
+### 常见问题
+
+#### 使用箭头函数改变状态变量未生效
+
+**箭头函数体内的this对象，就是定义该函数时所在的作用域指向的对象**，而不是使用时所在的作用域指向的对象。**所以在该场景下， changeCoverUrl的this指向PlayDetailViewModel，而不是被装饰器@State代理的状态变量**。
+
+反例：
+
+```ts
+export default class PlayDetailViewModel {
+  coverUrl: string = '#00ff00'
+
+  changeCoverUrl= ()=> {
+    this.coverUrl = '#00F5FF'
+  }
+
+}
+
+import PlayDetailViewModel from './PlayDetailViewModel'
+
+@Entry
+@Component
+struct PlayDetailPage {
+  @State vm: PlayDetailViewModel = new PlayDetailViewModel()
+
+  build() {
+    Stack() {
+      Text(this.vm.coverUrl).width(100).height(100).backgroundColor(this.vm.coverUrl)
+      Row() {
+        Button('点击改变颜色')
+          .onClick(() => {
+            this.vm.changeCoverUrl()
+          })
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(Alignment.Top)
+  }
+}
+```
+
+所以要将当前this.vm传入，调用代理状态变量的属性赋值。
+
+正例：
+
+```ts
+export default class PlayDetailViewModel {
+  coverUrl: string = '#00ff00'
+
+  changeCoverUrl= (model:PlayDetailViewModel)=> {
+    model.coverUrl = '#00F5FF'
+  }
+
+}
+ts
+import PlayDetailViewModel from './PlayDetailViewModel'
+
+@Entry
+@Component
+struct PlayDetailPage {
+  @State vm: PlayDetailViewModel = new PlayDetailViewModel()
+
+  build() {
+    Stack() {
+      Text(this.vm.coverUrl).width(100).height(100).backgroundColor(this.vm.coverUrl)
+      Row() {
+        Button('点击改变颜色')
+          .onClick(() => {
+            let self = this.vm
+            this.vm.changeCoverUrl(self)
+          })
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(Alignment.Top)
+  }
+}
+```
+
+#### 状态变量的修改放在构造函数内未生效
+
+**在状态管理中，类会被一层“代理”进行包装**。当在组件中改变该类的成员变量时，会被该代理进行拦截，在更改数据源中值的同时，也会将变化通知给绑定的组件，从而实现观测变化与触发刷新。当开发者把状态变量的修改放在构造函数里时，此修改不会经过代理（因为是直接对数据源中的值进行修改），即使修改成功执行，也无法观测UI的刷新。
+
+【反例】
+
+```ts
+@Entry
+@Component
+struct Index {
+  @State viewModel: TestModel = new TestModel();
+
+  build() {
+    Row() {
+      Column() {
+        Text(this.viewModel.isSuccess ? 'success' : 'failed')
+          .fontSize(50)
+          .fontWeight(FontWeight.Bold)
+          .onClick(() => {
+            this.viewModel.query()
+          })
+      }.width('100%')
+    }.height('100%')
+  }
+}
+
+export class TestModel {
+  isSuccess: boolean = false
+  model: Model
+
+  constructor() {
+    this.model = new Model(() => {
+      this.isSuccess = true
+      console.log(`this.isSuccess: ${this.isSuccess}`)
+    })
+  }
+
+  query() {
+    this.model.query()
+  }
+}
+
+export class Model {
+  callback: () => void
+
+  constructor(cb: () => void) {
+    this.callback = cb
+  }
+
+  query() {
+    this.callback()
+  }
+}
+```
+
+上文示例代码将状态变量的修改放在构造函数内，界面开始时显示“failed”，点击后日志打印“this.isSuccess: true”说明修改成功，但界面依旧显示“failed”，未实现刷新。
+
+【正例】
+
+```ts
+@Entry
+@Component
+struct Index {
+  @State viewModel: TestModel = new TestModel();
+
+  build() {
+    Row() {
+      Column() {
+        Text(this.viewModel.isSuccess ? 'success' : 'failed')
+          .fontSize(50)
+          .fontWeight(FontWeight.Bold)
+          .onClick(() => {
+            this.viewModel.query()
+          })
+      }.width('100%')
+    }.height('100%')
+  }
+}
+
+export class TestModel {
+  isSuccess: boolean = false
+  model: Model = new Model(() => {
+  })
+
+  query() {
+    this.model = new Model(() => {
+      this.isSuccess = true
+    })
+    this.model.query()
+  }
+}
+
+export class Model {
+  callback: () => void
+
+  constructor(cb: () => void) {
+    this.callback = cb
+  }
+
+  query() {
+    this.callback()
+  }
+}
+ts
+```
+
+上文示例代码将状态变量的修改放在类的普通方法中，界面开始时显示“failed”，点击后显示“success”。
