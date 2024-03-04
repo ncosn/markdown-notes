@@ -1567,11 +1567,11 @@ ArkUI提供了多种装饰器，通过使用这些装饰器，状态变量不仅
 
 
 
-### 观察变化和行为表现
+### 观察变化和行为表现：
 
 并不是状态变量的所有更改都会引起UI刷新，只有可以被框架观察到的修改才会引起UI刷新。本小节将介绍什么样的修改才能被观察到，以及观察到变化后，框架的是怎么引起UI刷新的，即框架的行为表现是什么。
 
-#### 观察变化
+#### 1、观察变化
 
 - 当装饰的数据类型为`boolean`、`string`、`number`类型时，可以**观察到数值的变化**。
 
@@ -1726,15 +1726,15 @@ ArkUI提供了多种装饰器，通过使用这些装饰器，状态变量不仅
   }
   ```
 
-#### 框架行为
+#### 2、框架行为
 
 - 当状态变量被改变时，查询依赖该状态变量的组件；
 - 执行依赖该状态变量的组件的更新方法，组件更新渲染；
 - 和该状态变量不相关的组件或者UI描述不会发生重新渲染，从而实现页面渲染的按需更新。
 
-### 使用场景
+### 使用场景：
 
-#### 装饰简单类型的变量
+#### 1、装饰简单类型的变量
 
 以下示例为@State装饰的简单类型，count被@State装饰成为状态变量，count的改变引起Button组件的刷新：
 
@@ -1756,7 +1756,7 @@ struct MyComponent {
 }
 ```
 
-#### 装饰class对象类型的变量
+#### 2、装饰class对象类型的变量
 
 - 自定义组件MyComponent定义了被@State装饰的状态变量count和title，其中title的类型为自定义类Model。如果count或title的值发生变化，则查询MyComponent中使用该状态变量的UI组件，并进行重新渲染。
 - EntryComponent中有多个MyComponent组件实例，第一个MyComponent内部状态的更改不会影响第二个MyComponent。
@@ -1837,9 +1837,9 @@ struct MyComponent {
    MyComponent(obj)
    ```
 
-### 常见问题
+### 常见问题：
 
-#### 使用箭头函数改变状态变量未生效
+#### 1、使用箭头函数改变状态变量未生效
 
 **箭头函数体内的this对象，就是定义该函数时所在的作用域指向的对象**，而不是使用时所在的作用域指向的对象。**所以在该场景下， changeCoverUrl的this指向PlayDetailViewModel，而不是被装饰器@State代理的状态变量**。
 
@@ -1918,9 +1918,9 @@ struct PlayDetailPage {
 }
 ```
 
-#### 状态变量的修改放在构造函数内未生效
+#### 2、状态变量的修改放在构造函数内未生效
 
-**在状态管理中，类会被一层“代理”进行包装**。当在组件中改变该类的成员变量时，会被该代理进行拦截，在更改数据源中值的同时，也会将变化通知给绑定的组件，从而实现观测变化与触发刷新。当开发者把状态变量的修改放在构造函数里时，此修改不会经过代理（因为是直接对数据源中的值进行修改），即使修改成功执行，也无法观测UI的刷新。
+**在状态管理中，类会被一层“代理”进行包装**。**当在组件中改变该类的成员变量时，会被该代理进行拦截，在更改数据源中值的同时，也会将变化通知给绑定的组件，从而实现观测变化与触发刷新**。当开发者把状态变量的修改放在构造函数里时，此修改不会经过代理（因为是直接对数据源中的值进行修改），即使修改成功执行，也无法观测UI的刷新。
 
 【反例】
 
@@ -2025,3 +2025,250 @@ ts
 ```
 
 上文示例代码将状态变量的修改放在类的普通方法中，界面开始时显示“failed”，点击后显示“success”。
+
+
+
+## @Prop装饰器：父子单向同步
+
+@Prop装饰的变量可以和父组件建立单向的同步关系。@Prop装饰的变量是可变的，但是变化不会同步回其父组件。
+
+### 概述
+
+@Prop装饰的变量和父组件建立单向的同步关系：
+
++ @Prop变量允许在本地修改，但修改后的变化不会同步回父组件。
++ 当数据源更改时，@Prop装饰的变量都会更新，并且会覆盖本地所有更改。因此，数值的同步是父组件到子组件（所属组件），子组件数值的变化不会同步到父组件。
+
+### 限制条件
+
++ @Prop装饰变量时会进行深拷贝，在拷贝的过程中除了基本类型、Map、Set、Date、Array外，都会丢失类型。例如PixelMap等通过NAPI提供的复杂类型，由于有部分实现在Native侧，因此无法在ArkTS侧通过深拷贝获得完整的数据。
++ @Prop装饰器不能在@Entry装饰的自定义组件中使用。
+
+### 装饰器使用规则说明
+
+| @Prop变量装饰器    | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 装饰器参数         | 无                                                           |
+| 同步类型           | 单向同步：对父组件状态变量值的修改，将同步给子组件@Prop装饰的变量，子组件@Prop变量的修改不会同步到父组件的状态变量上。嵌套类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#观察变化)。 |
+| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。 不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。 支持Date类型。 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#观察变化)。 必须指定类型。 **说明** ： 不支持Length、ResourceStr、ResourceColor类型，Length，ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 在父组件中，传递给@Prop装饰的值不能为undefined或者null，反例如下所示。 CompA ({ aProp: undefined }) CompA ({ aProp: null }) @Prop和[数据源](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state-management-overview.md#基本概念)类型需要相同，有以下三种情况： - @Prop装饰的变量和@State以及其他装饰器同步时双方的类型必须相同，示例请参考[父组件@State到子组件@Prop简单数据类型同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#父组件state到子组件prop简单数据类型同步)。 - @Prop装饰的变量和@State以及其他装饰器装饰的数组的项同步时 ，@Prop的类型需要和@State装饰的数组的数组项相同，比如@Prop : T和@State : Array<T>，示例请参考[父组件@State数组中的项到子组件@Prop简单数据类型同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#父组件state数组项到子组件prop简单数据类型同步)； - 当父组件状态变量为Object或者class时，@Prop装饰的变量和父组件状态变量的属性类型相同，示例请参考[从父组件中的@State类对象属性到@Prop简单类型的同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#从父组件中的state类对象属性到prop简单类型的同步)。 |
+| 嵌套传递层数       | 在组件复用场景，建议@Prop深度嵌套数据不要超过5层，嵌套太多会导致深拷贝占用的空间过大以及GarbageCollection(垃圾回收)，引起性能问题，此时更建议使用[@ObjectLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md)。 |
+| 被装饰变量的初始值 | 允许本地初始化。                                             |
+
+### 变量的传递/访问规则说明
+
+| 传递/访问          | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 从父组件初始化     | 如果本地有初始化，则是可选的。没有的话，则必选，支持父组件中的常规变量（常规变量对@Prop赋值，只是数值的初始化，常规变量的变化不会触发UI刷新。只有状态变量才能触发UI刷新）、@State、@Link、@Prop、@Provide、@Consume、@ObjectLink、@StorageLink、@StorageProp、@LocalStorageLink和@LocalStorageProp去初始化子组件中的@Prop变量。 |
+| 用于初始化子组件   | @Prop支持去初始化子组件中的常规变量、@State、@Link、@Prop、@Provide。 |
+| 是否支持组件外访问 | @Prop装饰的变量是私有的，只能在组件内访问。                  |
+
+初始化规则图示
+
+![image-20240304160149201](./ArkTS.assets/image-20240304160149201.png)
+
+
+
+### 观察变化和行为表现：
+
+#### 1、观察变化
+
+@Prop装饰的数据可以观察到以下变化。
+
++ 当装饰的类型是允许的类型，即`Object、class、string、number、boolean、enum`类型都可以观察到赋值的变化。
+
+  ```ts
+  // 简单类型
+  @Prop count: number;
+  // 赋值的变化可以被观察到
+  this.count = 1;
+  // 复杂类型
+  @Prop title: Model;
+  // 可以观察到赋值的变化
+  this.title = new Model('Hi');
+  ```
+
++ 当装饰的类型是`Object`或者`class`复杂类型时，可以观察到**第一层的属性的变化**，属性即Object.keys(observedObject)返回的所有属性；
+
+对于嵌套场景，如果class是被@Observed装饰的，可以观察到class属性的变化，示例请参考[@Prop嵌套场景](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#prop嵌套场景)。
+
++ 当装饰的类型是**数组**的时候，可以观察到**数组本身的赋值、添加、删除和更新**。
+
+对于@State和@Prop的同步场景：
+
+- 使用父组件中@State变量的值初始化子组件中的@Prop变量。当@State变量变化时，该变量值也会同步更新至@Prop变量（**覆盖本地更改**）。
+- @Prop装饰的变量的修改不会影响其数据源@State装饰变量的值。
+- 除了@State，数据源也可以用@Link或@Prop装饰，对@Prop的同步机制是相同的。
+- 数据源和@Prop变量的类型需要相同，@Prop允许简单类型和class类型。
+- 当装饰的对象是Date时，可以观察到Date整体的赋值，同时可通过调用Date的接口`setFullYear`, `setMonth`, `setDate`, `setHours`, `setMinutes`, `setSeconds`, `setMilliseconds`, `setTime`, `setUTCFullYear`, `setUTCMonth`, `setUTCDate`, `setUTCHours`, `setUTCMinutes`, `setUTCSeconds`, `setUTCMilliseconds` 更新Date的属性
+
+#### 2、框架行为
+
+要理解@Prop变量值初始化和更新机制，有必要了解父组件和拥有@Prop变量的子组件初始渲染和更新流程。
+
+1. 初始渲染：
+   1. 执行父组件的build()函数将创建子组件的新实例，将数据源传递给子组件；
+   2. 初始化子组件@Prop装饰的变量。
+2. 更新：
+   1. 子组件@Prop更新时，更新仅停留在当前子组件，不会同步回父组件；
+   2. 当父组件的数据源更新时，子组件的@Prop装饰的变量将被来自父组件的数据源重置，所有@Prop装饰的本地的修改将被父组件的更新覆盖。
+
+> **说明：**
+>
+> **`@Prop`装饰的数据更新依赖其所属自定义组件的重新渲染，所以在应用进入后台后，@Prop无法刷新，推荐使用`@Link`代替。**
+
+
+
+### 使用场景：
+
+#### 1、父组件@State到子组件@Prop的简单数据类型同步
+
+#### 2、父组件@State数组项到子组件@Prop简单数据类型同步
+
+#### 3、从父组件中的@State类对象属性到@Prop简单类型的同步
+
+如果图书馆有一本图书和两位用户，每位用户都可以将图书标记为已读，此标记行为不会影响其它读者用户。从代码角度讲，对@Prop图书对象的本地更改不会同步给图书馆组件中的@State图书对象。
+
+在此示例中，图书类可以使用@Observed装饰器，但不是必须的，只有在嵌套结构时需要此装饰器。这一点我们会在[从父组件中的@State数组项到@Prop class类型的同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#从父组件中的state数组项到prop-class类型的同步)说明。
+
+#### 4、从父组件中的@State数组项到@Prop class类型的同步
+
+在下面的示例中，更改了@State 装饰的allBooks数组中Book对象上的属性，但点击“Mark read for everyone”无反应。这是因为该属性是第二层的嵌套属性，@State装饰器只能观察到第一层属性，不会观察到此属性更改，所以框架不会更新ReaderComp。
+
+```ts
+let nextId: number = 1;
+
+// @Observed
+class Book {
+  public id: number;
+  public title: string;
+  public pages: number;
+  public readIt: boolean = false;
+
+  constructor(title: string, pages: number) {
+    this.id = nextId++;
+    this.title = title;
+    this.pages = pages;
+  }
+}
+
+@Component
+struct ReaderComp {
+  @Prop book: Book = new Book("", 1);
+
+  build() {
+    Row() {
+      Text(` ${this.book ? this.book.title : "Book is undefined"}`).fontColor('#e6000000')
+      Text(` has ${this.book ? this.book.pages : "Book is undefined"} pages!`).fontColor('#e6000000')
+      Text(` ${this.book ? this.book.readIt ? "I have read" : 'I have not read it' : "Book is undefined"}`).fontColor('#e6000000')
+        .onClick(() => this.book.readIt = true)
+    }
+  }
+}
+
+@Entry
+@Component
+struct Library {
+  @State allBooks: Book[] = [new Book("C#", 765), new Book("JS", 652), new Book("TS", 765)];
+
+  build() {
+    Column() {
+      Text('library`s all time favorite')
+        .width(312)
+        .height(40)
+        .backgroundColor('#0d000000')
+        .borderRadius(20)
+        .margin(12)
+        .padding({ left: 20 })
+        .fontColor('#e6000000')
+      ReaderComp({ book: this.allBooks[2] })
+        .backgroundColor('#0d000000')
+        .width(312)
+        .height(40)
+        .padding({ left: 20, top: 10 })
+        .borderRadius(20)
+        .colorBlend('#e6000000')
+      Divider()
+      Text('Books on loaan to a reader')
+        .width(312)
+        .height(40)
+        .backgroundColor('#0d000000')
+        .borderRadius(20)
+        .margin(12)
+        .padding({ left: 20 })
+        .fontColor('#e6000000')
+      ForEach(this.allBooks, (book: Book) => {
+        ReaderComp({ book: book })
+          .margin(12)
+          .width(312)
+          .height(40)
+          .padding({ left: 20, top: 10 })
+          .backgroundColor('#0d000000')
+          .borderRadius(20)
+      },
+        (book: Book) => book.id.toString())
+      Button('Add new')
+        .width(312)
+        .height(40)
+        .margin(12)
+        .fontColor('#FFFFFF 90%')
+        .onClick(() => {
+          this.allBooks.push(new Book("JA", 512));
+        })
+      Button('Remove first book')
+        .width(312)
+        .height(40)
+        .margin(12)
+        .fontColor('#FFFFFF 90%')
+        .onClick(() => {
+          if (this.allBooks.length > 0){
+            this.allBooks.shift();
+          } else {
+            console.log("length <= 0")
+          }
+        })
+      Button("Mark read for everyone")
+        .width(312)
+        .height(40)
+        .margin(12)
+        .fontColor('#FFFFFF 90%')
+        .onClick(() => {
+          this.allBooks.forEach((book) => book.readIt = true)
+        })
+    }
+  }
+}
+```
+
+需要使用`@Observed`**装饰class Book**，**Book的属性将被观察**。 需要注意的是，@Prop在子组件装饰的状态变量和父组件的数据源是单向同步关系，即ReaderComp中的@Prop book的修改不会同步给父组件Library。而**父组件只会在数值有更新的时候（和上一次状态的对比），才会触发UI的重新渲染**。
+
+```ts
+@Observed
+class Book {
+  public id: number;
+  public title: string;
+  public pages: number;
+  public readIt: boolean = false;
+
+  constructor(title: string, pages: number) {
+    this.id = nextId++;
+    this.title = title;
+    this.pages = pages;
+  }
+}
+```
+
+@Observed装饰的类的实例会被不透明的代理对象包装，此代理可以检测到包装对象内的所有属性更改。如果发生这种情况，此时，代理通知@Prop，@Prop对象值被更新。
+
+#### @Prop本地初始化不和父组件同步
+
+为了支持@Component装饰的组件复用场景，@Prop支持本地初始化，这样可以让@Prop是否与父组件建立同步关系变得可选。当且仅当@Prop有本地初始化时，从父组件向子组件传递@Prop的数据源才是可选的。
+
+#### @Prop嵌套场景
+
+在嵌套场景下，每一层都要用@Observed装饰，且每一层都要被@Prop接收，这样才能观察到嵌套场景。
+
+### 常见问题
+
+#### @Prop装饰状态变量未初始化错误
+
+@Prop需要被初始化，如果没有进行本地初始化的，则必须通过父组件进行初始化。如果进行了本地初始化，那么是可以不通过父组件进行初始化的。
