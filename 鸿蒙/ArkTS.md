@@ -669,8 +669,8 @@ this.MyBuilderFunction()
 MyGlobalBuilderFunction()
 ```
 
-- 全局的自定义构建函数可以被整个应用获取，不允许使用this和bind方法。
-- 如果不涉及组件状态变化，建议使用全局的自定义构建方法。
+- **全局的自定义构建函数可以被整个应用获取，不允许使用this和bind方法**。
+- **如果不涉及组件状态变化，建议使用全局的自定义构建方法**。
 
 
 
@@ -858,7 +858,7 @@ struct Parent {
   }
   ```
 
-+ 需注意this指向正确。
++ **需注意this指向正确**。
 
   以下示例中，Parent组件在调用this.componentBuilder()时，this指向其所属组件，即“Parent”。@Builder componentBuilder()传给子组件@BuilderParam customBuilderParam，在Child组件中调用this.customBuilderParam()时，this指向在Child的label，即“Child”。
 
@@ -1445,8 +1445,8 @@ Button默认normal态显示绿色，第一次按下Tab键让Button获焦显示�
 
 ### 基本概念
 
-+ 状态变量：被状态装饰器装饰的变量，状态变量值的改变会引起UI的渲染更新。示例：`@State num: number = 1`，其中，@State是状态装饰器，num是状态变量。
-+ 常规变量：没有被状态装饰器修饰的变量，通常应用于辅助计算。它的改变永远不会引起UI的刷新。以下示例中increaseBy变量为常规变量。
++ **状态变量：被状态装饰器装饰的变量，状态变量值的改变会引起UI的渲染更新。示例：`@State num: number = 1`，其中，@State是状态装饰器，num是状态变量。**
++ **常规变量：没有被状态装饰器修饰的变量，通常应用于辅助计算。它的改变永远不会引起UI的刷新。以下示例中increaseBy变量为常规变量**。
 + 数据源/同步源：状态变量的原始来源，可以同步给不同的状态数据。通常意义为父组件传给子组件的数据
 
 - 命名参数机制：父组件通过指定参数传递给子组件的状态变量，为父子传递同步参数的主要手段。示例：CompA: ({ aProp: this.aProp })。
@@ -1547,7 +1547,7 @@ ArkUI提供了多种装饰器，通过使用这些装饰器，状态变量不仅
 | @State变量装饰器   | 说明                                                         |
 | :----------------- | :----------------------------------------------------------- |
 | 装饰器参数         | 无                                                           |
-| 同步类型           | 不与父组件中任何类型的变量同步。                             |
+| 同步类型           | **不与父组件中任何类型的变量同步。**                         |
 | 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。<br /> 支持Date类型。<br /> 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state.md#观察变化)。<br /> 类型必须被指定。 <br />不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。<br />**说明：**不支持Length、ResourceStr、ResourceColor类型，Length、ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 |
 | 被装饰变量的初始值 | 必须本地初始化。                                             |
 
@@ -2042,15 +2042,15 @@ ts
 ### 限制条件
 
 + @Prop装饰变量时会进行深拷贝，在拷贝的过程中除了基本类型、Map、Set、Date、Array外，都会丢失类型。例如PixelMap等通过NAPI提供的复杂类型，由于有部分实现在Native侧，因此无法在ArkTS侧通过深拷贝获得完整的数据。
-+ @Prop装饰器不能在@Entry装饰的自定义组件中使用。
++ @Prop装饰器**不能在@Entry装饰**的自定义组件中使用。
 
 ### 装饰器使用规则说明
 
 | @Prop变量装饰器    | 说明                                                         |
 | :----------------- | :----------------------------------------------------------- |
 | 装饰器参数         | 无                                                           |
-| 同步类型           | 单向同步：对父组件状态变量值的修改，将同步给子组件@Prop装饰的变量，子组件@Prop变量的修改不会同步到父组件的状态变量上。嵌套类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#观察变化)。 |
-| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。 不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。 支持Date类型。 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#观察变化)。 必须指定类型。 **说明** ： 不支持Length、ResourceStr、ResourceColor类型，Length，ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 在父组件中，传递给@Prop装饰的值不能为undefined或者null，反例如下所示。 CompA ({ aProp: undefined }) CompA ({ aProp: null }) @Prop和[数据源](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state-management-overview.md#基本概念)类型需要相同，有以下三种情况： - @Prop装饰的变量和@State以及其他装饰器同步时双方的类型必须相同，示例请参考[父组件@State到子组件@Prop简单数据类型同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#父组件state到子组件prop简单数据类型同步)。 - @Prop装饰的变量和@State以及其他装饰器装饰的数组的项同步时 ，@Prop的类型需要和@State装饰的数组的数组项相同，比如@Prop : T和@State : Array<T>，示例请参考[父组件@State数组中的项到子组件@Prop简单数据类型同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#父组件state数组项到子组件prop简单数据类型同步)； - 当父组件状态变量为Object或者class时，@Prop装饰的变量和父组件状态变量的属性类型相同，示例请参考[从父组件中的@State类对象属性到@Prop简单类型的同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#从父组件中的state类对象属性到prop简单类型的同步)。 |
+| 同步类型           | **单向同步**：对父组件状态变量值的修改，将同步给子组件@Prop装饰的变量，子组件@Prop变量的修改不会同步到父组件的状态变量上。嵌套类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#观察变化)。 |
+| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。 <br />不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。 <br />支持Date类型。 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#观察变化)。 必须指定类型。 <br />**说明** ： 不支持Length、ResourceStr、ResourceColor类型，Length，ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 在父组件中，传递给@Prop装饰的值不能为undefined或者null，反例如下所示。 CompA ({ aProp: undefined }) CompA ({ aProp: null }) @Prop和[数据源](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-state-management-overview.md#基本概念)类型需要相同，有以下三种情况：<br /> - @Prop装饰的变量和@State以及其他装饰器同步时双方的类型必须相同，示例请参考[父组件@State到子组件@Prop简单数据类型同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#父组件state到子组件prop简单数据类型同步)。<br /> - @Prop装饰的变量和@State以及其他装饰器装饰的数组的项同步时 ，@Prop的类型需要和@State装饰的数组的数组项相同，比如@Prop : T和@State : Array<T>，示例请参考[父组件@State数组中的项到子组件@Prop简单数据类型同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#父组件state数组项到子组件prop简单数据类型同步)； <br />- 当父组件状态变量为Object或者class时，@Prop装饰的变量和父组件状态变量的属性类型相同，示例请参考[从父组件中的@State类对象属性到@Prop简单类型的同步](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md#从父组件中的state类对象属性到prop简单类型的同步)。 |
 | 嵌套传递层数       | 在组件复用场景，建议@Prop深度嵌套数据不要超过5层，嵌套太多会导致深拷贝占用的空间过大以及GarbageCollection(垃圾回收)，引起性能问题，此时更建议使用[@ObjectLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md)。 |
 | 被装饰变量的初始值 | 允许本地初始化。                                             |
 
@@ -2259,11 +2259,11 @@ class Book {
 
 @Observed装饰的类的实例会被不透明的代理对象包装，此代理可以检测到包装对象内的所有属性更改。如果发生这种情况，此时，代理通知@Prop，@Prop对象值被更新。
 
-#### @Prop本地初始化不和父组件同步
+#### 5、@Prop本地初始化不和父组件同步
 
-为了支持@Component装饰的组件复用场景，@Prop支持本地初始化，这样可以让@Prop是否与父组件建立同步关系变得可选。当且仅当@Prop有本地初始化时，从父组件向子组件传递@Prop的数据源才是可选的。
+**为了支持@Component装饰的组件复用场景，@Prop支持本地初始化，这样可以让@Prop是否与父组件建立同步关系变得可选**。当且仅当@Prop有本地初始化时，从父组件向子组件传递@Prop的数据源才是可选的。
 
-#### @Prop嵌套场景
+#### 6、@Prop嵌套场景
 
 在嵌套场景下，每一层都要用@Observed装饰，且每一层都要被@Prop接收，这样才能观察到嵌套场景。
 
@@ -2272,3 +2272,1321 @@ class Book {
 #### @Prop装饰状态变量未初始化错误
 
 @Prop需要被初始化，如果没有进行本地初始化的，则必须通过父组件进行初始化。如果进行了本地初始化，那么是可以不通过父组件进行初始化的。
+
+
+
+## @Link装饰器：父子双向同步
+
+子组件中被@Link装饰的变量与其父组件中对应的数据源建立双向数据绑定。
+
+### 概述
+
+@Link装饰的变量与其父组件中的数据源共享相同的值。
+
+### 限制条件
+
++ @Link装饰器**不能在@Entry装饰**的自定义组件中使用。
+
+### 装饰器使用规则说明
+
+| @Link变量装饰器    | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 装饰器参数         | 无                                                           |
+| 同步类型           | **双向同步**。 父组件中`@State, @StorageLink和@Link `和子组件@Link可以建立双向数据同步，反之亦然。 |
+| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。 <br />支持Date类型。支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-link.md#观察变化)。 <br />类型必须被指定，且和双向绑定状态变量的类型相同。<br /> 不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。<br /> **说明：** 不支持Length、ResourceStr、ResourceColor类型，Length、ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 |
+| 被装饰变量的初始值 | 无，**禁止本地初始化。**                                     |
+
+
+
+### 变量的传递/访问规则说明
+
+| 传递/访问            | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父组件初始化和更新 | **必选**。与父组件@State, @StorageLink和@Link 建立双向绑定。允许父组件中`@State、@Link、@Prop、@Provide、@Consume、@ObjectLink、@StorageLink、@StorageProp、@LocalStorageLink和@LocalStorageProp`装饰变量初始化子组件@Link。 从API version 9开始，@Link子组件从父组件初始化@State的语法为Comp({ aLink: this.aState })。同样Comp({aLink: $aState})也支持。 |
+| 用于初始化子组件     | 允许，可用于初始化常规变量、@State、@Link、@Prop、@Provide。 |
+| 是否支持组件外访问   | 私有，只能在所属组件内访问。                                 |
+
+初始化规则图示
+
+![image-20240305085809318](./ArkTS.assets/image-20240305085809318.png)
+
+
+
+### 观察变化和行为表现
+
+#### 1、观察变化
+
++ 当装饰的数据类型为`boolean、string、number`类型时，可以同步观察到数值的变化，示例请参考[简单类型和类对象类型的@Link](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-link.md#简单类型和类对象类型的link)。
++ 当装饰的数据类型为`class或者Object`时，可以观察到赋值和属性赋值的变化，即Object.keys(observedObject)返回的所有属性，示例请参考[简单类型和类对象类型的@Link](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-link.md#简单类型和类对象类型的link)。
++ 当装饰的对象是`array`时，可以观察到数组添加、删除、更新数组单元的变化，示例请参考[数组类型的@Link](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-link.md#数组类型的link)。
++ 当装饰的对象是Date时，可以观察到Date整体的赋值，同时可通过调用Date的接口`setFullYear`, `setMonth`, `setDate`, `setHours`, `setMinutes`, `setSeconds`, `setMilliseconds`, `setTime`, `setUTCFullYear`, `setUTCMonth`, `setUTCDate`, `setUTCHours`, `setUTCMinutes`, `setUTCSeconds`, `setUTCMilliseconds` 更新Date的属性。
+
+
+
+#### 2、框架行为
+
+**@Link装饰的变量和其所属的自定义组件共享生命周期。**
+
+为了了解@Link变量初始化和更新机制，有必要先了解父组件和拥有@Link变量的子组件的关系，初始渲染和双向更新的流程（以父组件为@State为例）。
+
+1. 初始渲染：执行父组件的build()函数后将创建子组件的新实例。初始化过程如下：
+   1. **必须指定父组件中的@State变量**，用于**初始化子组件的@Link变量**。子组件的@Link变量值与其父组件的数据源变量保持同步（**双向数据同步**）。
+   2. 父组件的@State状态变量包装类通过构造函数传给子组件，子组件的@Link包装类拿到父组件的@State的状态变量后，将当前@Link包装类this指针注册给父组件的@State变量。
+2. @Link的数据源的更新：即父组件中状态变量更新，引起相关子组件的@Link的更新。处理步骤：
+   1. 通过初始渲染的步骤可知，子组件@Link包装类把当前this指针注册给父组件。父组件@State变量变更后，会遍历更新所有依赖它的系统组件（elementid）和状态变量（比如@Link包装类）。
+   2. 通知@Link包装类更新后，子组件中所有依赖@Link状态变量的系统组件（elementId）都会被通知更新。以此实现父组件对子组件的状态数据同步。
+3. @Link的更新：当子组件中@Link更新后，处理步骤如下（以父组件为@State为例）：
+   1. @Link更新后，调用父组件的@State包装类的set方法，将更新后的数值同步回父组件。
+   2. 子组件@Link和父组件@State分别遍历依赖的系统组件，进行对应的UI的更新。以此实现子组件@Link同步回父组件@State。
+
+
+
+### 使用场景
+
+#### 1、简单类型和类对象类型的@Link
+
+#### 2、数组类型的@Link
+
+```ts
+@Component
+struct Child {
+  @Link items: number[];
+
+  build() {
+    Column() {
+      Button(`Button1: push`)
+        .margin(12)
+        .width(312)
+        .height(40)
+        .fontColor('#FFFFFF，90%')
+        .onClick(() => {
+          this.items.push(this.items.length + 1);
+        })
+      Button(`Button2: replace whole item`)
+        .margin(12)
+        .width(312)
+        .height(40)
+        .fontColor('#FFFFFF，90%')
+        .onClick(() => {
+          this.items = [100, 200, 300];
+        })
+    }
+  }
+}
+
+@Entry
+@Component
+struct Parent {
+  @State arr: number[] = [1, 2, 3];
+
+  build() {
+    Column() {
+      Child({ items: $arr })
+        .margin(12)
+      ForEach(this.arr,
+        (item: number) => {
+          Button(`${item}`)
+            .margin(12)
+            .width(312)
+            .height(40)
+            .backgroundColor('#11a2a2a2')
+            .fontColor('#e6000000')
+        },
+        (item: ForEachInterface) => item.toString()
+      )
+    }
+  }
+}s
+```
+
+上文所述，ArkUI框架可以观察到数组元素的添加，删除和替换。在该示例中@State和@Link的类型是相同的number[]，**不允许将@Link定义成number类型（@Link item : number），并在父组件中用@State数组中每个数据项创建子组件。如果要使用这个场景，可以参考[@Prop](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md)和@Observed。**
+
+### 常见问题
+
+#### @Link装饰状态变量类型错误
+
+在子组件中使用@Link装饰状态变量需要保证**该变量与数据源类型完全相同**，且该数据源需为**被诸如@State等装饰器装饰的状态变量**。
+
+
+
+## @Provide装饰器和@Consume装饰器：与后代组件双向同步
+
+`@Provide和@Consume`，应用于与后代组件的双向数据同步，应用于状态数据在多个层级之间传递的场景。不同于上文提到的父子组件之间通过命名参数机制传递，@Provide和@Consume**摆脱参数传递机制的束缚**，**实现跨层级传递**。
+
+其中@Provide装饰的变量是在祖先组件中，可以理解为被“提供”给后代的状态变量。@Consume装饰的变量是在后代组件中，去“消费（绑定）”祖先组件提供的变量。
+
+### 概述
+
+@Provide/@Consume装饰的状态变量有以下特性：
+
+- @Provide装饰的状态变量自动对其所有后代组件可用，即该变量被“provide”给他的后代组件。由此可见，@Provide的方便之处在于，开发者**不需要多次在组件之间传递变量**。
+- 后代通过使用@Consume去获取@Provide提供的变量，建立在@Provide和@Consume之间的双向数据同步，与@State/@Link不同的是，前者**可以在多层级的父子组件之间传递**。
+- @Provide和@Consume可以**通过相同的变量名或者相同的变量别名绑定**，**建议类型相同**，否则会发生类型隐式转换，从而导致应用行为异常。
+
+```ts
+// 通过相同的变量名绑定
+@Provide a: number = 0;
+@Consume a: number;
+
+// 通过相同的变量别名绑定
+@Provide('a') b: number = 0;
+@Consume('a') c: number;
+```
+
+@Provide和@Consume通过相同的变量名或者相同的变量别名绑定时，@Provide装饰的变量和@Consume装饰的变量是**一对多**的关系。**不允许在同一个自定义组件内**，包括其子组件中声明多个同名或者同别名的@Provide装饰的变量，@Provide的**属性名或别名需要唯一且确定**，如果声明多个同名或者同别名的@Provide装饰的变量，会发生运行时报错。
+
+### 装饰器说明
+
+@State的规则同样适用于@Provide，差异为@Provide还作为多层后代的同步源。
+
+| @Provide变量装饰器 | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 装饰器参数         | 别名：常量字符串，可选。<br />**如果指定了别名，则通过别名来绑定变量；如果未指定别名，则通过变量名绑定变量**。 |
+| 同步类型           | **双向同步**。<br /> 从@Provide变量到所有@Consume变量以及相反的方向的数据同步。双向同步的操作与@State和@Link的组合相同。 |
+| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。<br /> 支持Date类型。<br /> 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-provide-and-consume.md#观察变化)。<br /> 不支持any，不支持简单类型和复杂类型的联合类型，不允许使用undefined和null。<br /> 必须指定类型。@Provide变量的@Consume变量的类型必须相同。<br /> **说明：** 不支持Length、ResourceStr、ResourceColor类型，Length、ResourceStr、ResourceColor为简单类型和复杂类型的联合类型。 |
+| 被装饰变量的初始值 | **必须指定。**                                               |
+
+| @Consume变量装饰器 | 说明                                                         |
+| :----------------- | :----------------------------------------------------------- |
+| 装饰器参数         | 别名：常量字符串，可选。 **如果提供了别名，则必须有@Provide的变量和其有相同的别名才可以匹配成功**；**否则，则需要变量名相同才能匹配成功**。 |
+| 同步类型           | 双向：从@Provide变量（具体请参见@Provide）到所有@Consume变量，以及相反的方向。双向同步操作与@State和@Link的组合相同。 |
+| 允许装饰的变量类型 | Object、class、string、number、boolean、enum类型，以及这些类型的数组。 <br />支持Date类型。 支持类型的场景请参考[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-provide-and-consume.md#观察变化)。 <br />不支持any，不允许使用undefined和null。<br /> 必须指定类型。@Provide变量和@Consume变量的类型必须相同。<br /> **说明：** @Consume装饰的变量，在其父节点或者祖先节点上，必须有对应的属性和别名的@Provide装饰的变量。 |
+| 被装饰变量的初始值 | **无，禁止本地初始化。**                                     |
+
+### 变量的传递/访问规则说明
+
+| @Provide传递/访问    | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父组件初始化和更新 | 可选，**允许父组件中常规变量（常规变量对@Prop赋值，只是数值的初始化，常规变量的变化不会触发UI刷新，只有状态变量才能触发UI刷新）**、@State、@Link、@Prop、@Provide、@Consume、@ObjectLink、@StorageLink、@StorageProp、@LocalStorageLink和@LocalStorageProp装饰的变量装饰变量初始化子组件@Provide。 |
+| 用于初始化子组件     | 允许，可用于初始化@State、@Link、@Prop、@Provide。           |
+| 和父组件同步         | 否。                                                         |
+| 和后代组件同步       | 和@Consume双向同步。                                         |
+| 是否支持组件外访问   | 私有，仅可以在所属组件内访问。                               |
+
+@Provide初始化规则图示
+
+
+
+![image-20240305094427439](./ArkTS.assets/image-20240305094427439.png)
+
+| @Consume传递/访问    | 说明                                                        |
+| :------------------- | :---------------------------------------------------------- |
+| 从父组件初始化和更新 | **禁止。通过相同的变量名和alias（别名）从@Provide初始化。** |
+| 用于初始化子组件     | 允许，可用于初始化@State、@Link、@Prop、@Provide。          |
+| 和祖先组件同步       | 和@Provide双向同步。                                        |
+| 是否支持组件外访问   | 私有，仅可以在所属组件内访问                                |
+
+@Consume初始化规则图示
+
+![image-20240305101918636](./ArkTS.assets/image-20240305101918636.png)
+
+
+
+### 观察行为和行为表现
+
+#### 1、观察变化
+
++ 当装饰的数据类型为boolean、string、number类型时，可以观察到数值的变化。
++ 当装饰的数据类型为class或者Object的时候，可以观察到赋值和属性赋值的变化（属性为Object.keys(observedObject)返回的所有属性）。
++ 当装饰的对象是array的时候，可以观察到数组的添加、删除、更新数组单元。
++ 当装饰的对象是Date时，可以观察到Date整体的赋值，同时可通过调用Date的接口`setFullYear`, `setMonth`, `setDate`, `setHours`, `setMinutes`, `setSeconds`, `setMilliseconds`, `setTime`, `setUTCFullYear`, `setUTCMonth`, `setUTCDate`, `setUTCHours`, `setUTCMinutes`, `setUTCSeconds`, `setUTCMilliseconds` 更新Date的属性。
+
+#### 2、框架行为
+
+1. 初始渲染：
+
+   1. @Provide装饰的**变量会以`map`的形式，传递给当前@Provide所属组件的所有子组件**；
+   2. **子组件中如果使用`@Consume`变量，则会在map中查找是否有该变量名/alias（别名）对应的`@Provide`的变量**，**如果查找不到，框架会抛出JS ERROR**；
+   3. 在初始化`@Consume`变量时，和@State/@Link的流程类似，**@Consume变量会保存在map中查找到的@Provide变量，并把自己注册给@Provide**。
+
+2. 当@Provide装饰的数据变化时：
+
+   1. 通过初始渲染的步骤可知，子组件@Consume已把自己注册给父组件**。父组件@Provide变量变更后，会遍历更新所有依赖它的系统组件（elementid）和状态变量（@Consume）**；
+   2. 通知@Consume更新后，**子组件所有依赖@Consume的系统组件（elementId）都会被通知更新。以此实现@Provide对@Consume状态数据同步**。
+
+3. 当@Consume装饰的数据变化时：
+
+   通过初始渲染的步骤可知，子组件@Consume持有@Provide的实例。**在@Consume更新后调用@Provide的更新方法，将更新的数值同步回@Provide，以此实现@Consume向@Provide的同步更新**。
+
+
+
+### 常见问题
+
+#### @BuilderParam尾随闭包情况下@Provider未定义错误
+
+在此场景下，CustomWidget执行this.builder()创建子组件CustomWidgetChild时，this指向的是HomePage。因此找不到CustomWidget的@Provide变量，所以下面示例会报找不到@Provide错误，和@BuilderParam连用的时候要谨慎this的指向。
+
+错误示例：
+
+```ts
+class Tmp {
+  a: string = ''
+}
+
+@Entry
+@Component
+struct HomePage {
+  @Builder
+  builder2($$: Tmp) {
+    Text(`${$$.a}测试`)
+  }
+  build() {
+    Column() {
+      CustomWidget() {
+        CustomWidgetChild({ builder: this.builder2 })
+      }
+    }
+  }
+}
+@Component
+struct CustomWidget {
+  @Provide('a') a: string = 'abc';
+  @BuilderParam
+  builder: () => void;
+  build() {
+    Column() {
+      Button('你好').onClick((x) => {
+        if (this.a == 'ddd') {
+          this.a = 'abc';
+        }
+        else {
+          this.a = 'ddd';
+        }
+      })
+      this.builder()
+    }
+  }
+}
+@Component
+struct CustomWidgetChild {
+  @Consume('a') a: string;
+  @BuilderParam
+  builder: ($$: Tmp) => void;
+  build() {
+    Column() {
+      this.builder({ a: this.a })
+    }
+  }
+}
+```
+
+
+
+## @Observed装饰器和@ObjectLink装饰器：嵌套类对象属性变化
+
+**上文所述的装饰器仅能观察到第一层的变化**，但是在实际应用开发中，应用会根据开发需要，封装自己的数据模型。对于多层嵌套的情况，比如**二维数组，或者数组项class，或者class的属性是class**，他们的第二层的属性变化是无法观察到的。这就**引出了`@Observed/@ObjectLink`装饰器**。
+
+### 概述
+
+@ObjectLink和@Observed类装饰器用于在**涉及嵌套对象或数组**的场景中进行**双向**数据同步：
+
+- **被@Observed装饰的类，可以被观察到属性的变化**；
+- **子组件中`@ObjectLink`装饰器装饰的状态变量用于接收`@Observed`装饰的类的实例**，和父组件中对应的状态变量建立**双向**数据绑定。这个实例可以是数组中的被@Observed装饰的项，或者是class object中的属性，这个属性同样也需要被@Observed装饰。
+- 单独使用@Observed是没有任何作用的，需要**搭配@ObjectLink或者[@Prop](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md)使用**。
+
+### 限制条件
+
+- 使用@Observed装饰class会**改变class原始的原型链**，**@Observed和其他类装饰器装饰同一个class可能会带来问题**。
+- **@ObjectLink装饰器不能在@Entry装饰的自定义组件中使用**。
+
+### 装饰器说明
+
+| @Observed类装饰器 | 说明                                                        |
+| :---------------- | :---------------------------------------------------------- |
+| 装饰器参数        | 无                                                          |
+| 类装饰器          | **装饰`class`**。需要放在class的定义前，使用new创建类对象。 |
+
+| @ObjectLink变量装饰器 | 说明                                                         |
+| :-------------------- | :----------------------------------------------------------- |
+| 装饰器参数            | 无                                                           |
+| 同步类型              | **不与父组件中的任何类型同步变量**。                         |
+| 允许装饰的变量类型    | **必须为被@Observed装饰的class实例，必须指定类型**。<br />**不支持简单类型，可以使用[@Prop](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md)**。<br /> 支持继承Date或者Array的class实例，示例见[观察变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md#观察变化)。<br /> **@ObjectLink的属性是可以改变的，但是变量的分配是不允许的，也就是说这个装饰器装饰变量是只读的，不能被改变**。 |
+| 被装饰变量的初始值    | **不允许**。                                                 |
+
+@ObjectLink装饰的数据为可读示例。
+
+```ts
+// 允许@ObjectLink装饰的数据属性赋值
+this.objLink.a= ...
+// 不允许@ObjectLink装饰的数据自身赋值
+this.objLink= ...
+```
+
+> **说明：**
+>
+> @ObjectLink装饰的变量不能被赋值，**如果要使用赋值操作，请使用[@Prop](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-prop.md)**。
+>
+> - @Prop装饰的变量和数据源的关系是是**单向同步**，@Prop装饰的变量在**本地拷贝了数据源**，**所以它允许本地更改**，如果父组件中的数据源有更新，@Prop装饰的变量本地的修改将被覆盖；
+> - @ObjectLink装饰的变量和数据源的关系是**双向同步**，**@ObjectLink装饰的变量相当于指向数据源的指针**。禁止对@ObjectLink装饰的变量赋值，如果一旦发生@ObjectLink装饰的变量的赋值，则同步链将被打断。因为@ObjectLink装饰的变量通过数据源（Object）引用来初始化。对于实现双向数据同步的@ObjectLink，赋值相当于更新父组件中的数组项或者class的属性，TypeScript/JavaScript不能实现，会发生运行时报错。
+
+### 变量的传递/访问规则说明
+
+| @ObjectLink传递/访问 | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父组件初始化       | **必须指定**。 初始化@ObjectLink装饰的变量必须同时满足以下场景： <br />- 类型必须是@Observed装饰的class。<br /> - 初始化的数值需要是数组项，或者class的属性。<br /> - 同步源的class或者数组必须是@State，@Link，@Provide，@Consume或者@ObjectLink装饰的数据。 <br />同步源是数组项的示例请参考[对象数组](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md#对象数组)。初始化的class的示例请参考[嵌套对象](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md#嵌套对象)。 |
+| 与源对象同步         | **双向**。                                                   |
+| 可以初始化子组件     | 允许，可用于初始化常规变量、@State、@Link、@Prop、@Provide   |
+
+初始化规则图示
+
+![image-20240305113438948](./ArkTS.assets/image-20240305113438948.png)
+
+### 观察变化和行为表现
+
+#### 1、观察变化
+
+@Observed装饰的类，如果**其属性为非简单类型**，比如**`class`、`Object`或者`数组`**，也需要被@Observed装饰，否则将观察不到其属性的变化。
+
+```ts
+class ClassA {
+  public c: number;
+
+  constructor(c: number) {
+    this.c = c;
+  }
+}
+
+@Observed
+class ClassB {
+  public a: ClassA;
+  public b: number;
+
+  constructor(a: ClassA, b: number) {
+    this.a = a;
+    this.b = b;
+  }
+}
+```
+
+以上示例中，ClassB被@Observed装饰，其成员变量的赋值的变化是可以被观察到的，但对于ClassA，没有被Observed装饰，其属性的修改不能被观察到。
+
+```ts
+@ObjectLink b: ClassB
+
+// 赋值变化可以被观察到
+this.b.a = new ClassA(5)
+this.b.b = 5
+
+// ClassA没有被@Observed装饰，其属性的变化观察不到
+this.b.a.c = 5
+```
+
+@ObjectLink：@ObjectLink只能接收被@Observed装饰class的实例，可以观察到：
+
+- 其属性的数值的变化，其中属性是指Object.keys(observedObject)返回的所有属性，示例请参考[嵌套对象](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md#嵌套对象)。
+- 如果数据源是数组，则可以观察到数组item的替换，如果数据源是class，可观察到class的属性的变化，示例请参考[对象数组](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-observed-and-objectlink.md#对象数组)。
+
+继承Date的class时，可以观察到Date整体的赋值，同时可通过调用Date的接口`setFullYear`, `setMonth`, `setDate`, `setHours`, `setMinutes`, `setSeconds`, `setMilliseconds`, `setTime`, `setUTCFullYear`, `setUTCMonth`, `setUTCDate`, `setUTCHours`, `setUTCMinutes`, `setUTCSeconds`, `setUTCMilliseconds` 更新Date的属性。
+
+#### 2、框架行为
+
+1. 初始渲染：
+   1. **@Observed装饰的class的实例会被不透明的代理对象包装，代理了class上的属性的`setter`和`getter`方法**
+   2. **子组件中@ObjectLink装饰的从父组件初始化，接收被@Observed装饰的class的实例，`@ObjectLink`的包装类会将自己注册给@Observed class**。
+2. 属性更新：当@Observed装饰的class属性改变时，会**走到代理的setter和getter**，然后遍历依赖它的@ObjectLink包装类，通知数据更新。
+
+### 使用场景
+
+#### 嵌套对象
+
+以下是嵌套类对象的数据结构
+
+> **说明：**
+>
+> NextID是用来在[ForEach循环渲染](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md)过程中，为每个数组元素生成一个唯一且持久的键值，用于标识对应的组件。
+
+```ts
+// objectLinkNestedObjects.ets
+let NextID: number = 1;
+
+@Observed
+class ClassA {
+  public id: number;
+  public c: number;
+
+  constructor(c: number) {
+    this.id = NextID++;
+    this.c = c;
+  }
+}
+
+@Observed
+class ClassB {
+  public a: ClassA;
+
+  constructor(a: ClassA) {
+    this.a = a;
+  }
+}
+
+@Observed
+class ClassD {
+  public c: ClassC;
+
+  constructor(c: ClassC) {
+    this.c = c;
+  }
+}
+
+@Observed
+class ClassC extends ClassA {
+  public k: number;
+
+  constructor(k: number) {
+    // 调用父类方法对k进行处理
+    super(k);
+    this.k = k;
+  }
+}
+```
+
+以下组件层次结构呈现的是此数据结构
+
+```ts
+@Component
+struct ViewC {
+  label: string = 'ViewC1';
+  @ObjectLink c: ClassC;
+
+  build() {
+    Row() {
+      Column() {
+        Text(`ViewC [${this.label}] this.a.c = ${this.c.c}`)
+          .fontColor('#ffffffff')
+          .backgroundColor('#ff3fc4c4')
+          .height(50)
+          .borderRadius(25)
+        Button(`ViewC: this.c.c add 1`)
+          .backgroundColor('#ff7fcf58')
+          .onClick(() => {
+            this.c.c += 1;
+            console.log('this.c.c:' + this.c.c)
+          })
+      }
+      .width(300)
+    }
+  }
+}
+
+@Entry
+@Component
+struct ViewB {
+  @State b: ClassB = new ClassB(new ClassA(0));
+  @State child: ClassD = new ClassD(new ClassC(0));
+
+  build() {
+    Column() {
+      ViewC({ label: 'ViewC #3',
+        c: this.child.c })
+      Button(`ViewC: this.child.c.c add 10`)
+        .backgroundColor('#ff7fcf58')
+        .onClick(() => {
+          this.child.c.c += 10
+          console.log('this.child.c.c:' + this.child.c.c)
+        })
+    }
+  }
+}
+```
+
+被@Observed装饰的ClassC类，可以观测到继承基类的属性的变化。
+
+ViewB中的事件句柄：
+
+- this.child.c = new ClassA(0) 和this.b = new ClassB(new ClassA(0))： 对@State装饰的变量b和其属性的修改。
+- this.child.c.c = … ：该变化属于第二层的变化，@State无法观察到第二层的变化，但是ClassA被@Observed装饰，ClassA的属性c的变化可以被@ObjectLink观察到。
+
+ViewC中的事件句柄：
+
+- this.c.c += 1：对@ObjectLink变量a的修改，将触发Button组件的刷新。@ObjectLink和@Prop不同，@ObjectLink不拷贝来自父组件的数据源，而是在本地构建了指向其数据源的引用。
+- @ObjectLink变量是只读的，this.a = new ClassA(…)是不允许的，因为一旦赋值操作发生，指向数据源的引用将被重置，同步将被打断。
+
+
+
+#### 对象数组
+
+对象数组是一种常用的数据结构。以下示例展示了数组对象的用法。
+
+```ts
+let NextID: number = 1;
+
+@Observed
+class ClassA {
+  public id: number;
+  public c: number;
+
+  constructor(c: number) {
+    this.id = NextID++;
+    this.c = c;
+  }
+}
+
+@Component
+struct ViewA {
+  // 子组件ViewA的@ObjectLink的类型是ClassA
+  @ObjectLink a: ClassA;
+  label: string = 'ViewA1';
+
+  build() {
+    Row() {
+      Button(`ViewA [${this.label}] this.a.c = ${this.a ? this.a.c : "undefined"}`)
+        .onClick(() => {
+          this.a.c += 1;
+        })
+    }
+  }
+}
+
+@Entry
+@Component
+struct ViewB {
+  // ViewB中有@State装饰的ClassA[]
+  @State arrA: ClassA[] = [new ClassA(0), new ClassA(0)];
+
+  build() {
+    Column() {
+      ForEach(this.arrA,
+        (item: ClassA) => {
+          ViewA({ label: `#${item.id}`, a: item })
+        },
+        (item: ClassA): string => item.id.toString()
+      )
+      // 使用@State装饰的数组的数组项初始化@ObjectLink，其中数组项是被@Observed装饰的ClassA的实例
+      ViewA({ label: `ViewA this.arrA[first]`, a: this.arrA[0] })
+      ViewA({ label: `ViewA this.arrA[last]`, a: this.arrA[this.arrA.length-1] })
+
+      Button(`ViewB: reset array`)
+        .onClick(() => {
+          this.arrA = [new ClassA(0), new ClassA(0)];
+        })
+      Button(`ViewB: push`)
+        .onClick(() => {
+          this.arrA.push(new ClassA(0))
+        })
+      Button(`ViewB: shift`)
+        .onClick(() => {
+          if (this.arrA.length > 0) {
+            this.arrA.shift()
+          } else {
+            console.log("length <= 0")
+          }
+        })
+      Button(`ViewB: chg item property in middle`)
+        .onClick(() => {
+          this.arrA[Math.floor(this.arrA.length / 2)].c = 10;
+        })
+      Button(`ViewB: chg item property in middle`)
+        .onClick(() => {
+          this.arrA[Math.floor(this.arrA.length / 2)] = new ClassA(11);
+        })
+    }
+  }
+}
+```
+
+- this.arrA[Math.floor(this.arrA.length/2)] = new ClassA(…) ：该状态变量的改变触发2次更新：
+  1. ForEach：数组项的赋值导致ForEach的[itemGenerator](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md#接口描述)被修改，因此数组项被识别为有更改，ForEach的item builder将执行，创建新的ViewA组件实例。
+  2. ViewA({ label: `ViewA this.arrA[last]`, a: this.arrA[this.arrA.length-1] })：上述更改改变了数组中第二个元素，所以绑定this.arrA[1]的ViewA将被更新；
+- this.arrA.push(new ClassA(0)) ： 将触发2次不同效果的更新：
+  1. **ForEach：新添加的ClassA对象对于ForEach是未知的[itemGenerator](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md#接口描述)，ForEach的item builder将执行，创建新的ViewA组件实例。**
+  2. **ViewA({ label: `ViewA this.arrA[last]`, a: this.arrA[this.arrA.length-1] })：数组的最后一项有更改，因此引起第二个ViewA的实例的更改。对于ViewA({ label: `ViewA this.arrA[first]`, a: this.arrA[0] })，数组的更改并没有触发一个数组项更改的改变，所以第一个ViewA不会刷新。**
+- this.arrA[Math.floor(this.arrA.length/2)].c：@State无法观察到第二层的变化，但是ClassA被@Observed装饰，ClassA的属性的变化将被@ObjectLink观察到。
+
+
+
+#### 二维数组
+
+使用@Observed观察二维数组的变化。可以声明一个被@Observed装饰的继承Array的子类。
+
+```ts
+@Observed
+class StringArray extends Array<String> {
+}
+```
+
+使用new StringArray()来构造StringArray的实例，new运算符使得@Observed生效，@Observed观察到StringArray的属性变化。
+
+声明一个从Array扩展的类class StringArray extends Array\<String\> {}，并创建StringArray的实例。**@Observed装饰的类需要使用new运算符来构建class实例**。
+
+```ts
+@Observed
+class StringArray extends Array<String> {
+}
+
+@Component
+struct ItemPage {
+  @ObjectLink itemArr: StringArray;
+
+  build() {
+    Row() {
+      Text('ItemPage')
+        .width(100).height(100)
+
+      ForEach(this.itemArr,
+        (item: string | Resource) => {
+          Text(item)
+            .width(100).height(100)
+        },
+        (item: string) => item
+      )
+    }
+  }
+}
+
+@Entry
+@Component
+struct IndexPage {
+  @State arr: Array<StringArray> = [new StringArray(), new StringArray(), new StringArray()];
+
+  build() {
+    Column() {
+      ItemPage({ itemArr: this.arr[0] })
+      ItemPage({ itemArr: this.arr[1] })
+      ItemPage({ itemArr: this.arr[2] })
+      Divider()
+
+
+      ForEach(this.arr,
+        (itemArr: StringArray) => {
+          ItemPage({ itemArr: itemArr })
+        },
+        (itemArr: string) => itemArr[0]
+      )
+
+      Divider()
+
+      Button('update')
+        .onClick(() => {
+          console.error('Update all items in arr');
+          if ((this.arr[0] as Array<String>)[0] !== undefined) {
+            // 正常情况下需要有一个真实的ID来与ForEach一起使用，但此处没有
+            // 因此需要确保推送的字符串是唯一的。
+            this.arr[0].push(`${this.arr[0].slice(-1).pop()}${this.arr[0].slice(-1).pop()}`);
+            this.arr[1].push(`${this.arr[1].slice(-1).pop()}${this.arr[1].slice(-1).pop()}`);
+            this.arr[2].push(`${this.arr[2].slice(-1).pop()}${this.arr[2].slice(-1).pop()}`);
+          } else {
+            this.arr[0].push('Hello');
+            this.arr[1].push('World');
+            this.arr[2].push('!');
+          }
+        })
+    }
+  }
+}
+```
+
+
+
+
+
+### 常见问题
+
+#### 在子组件中给@ObjectLink装饰的变量赋值
+
+在子组件中给@ObjectLink装饰的变量赋值是不允许的。
+
+> 对于实现双向数据同步的@ObjectLink，赋值相当于要更新父组件中的数组项或者class的属性，这个对于 TypeScript/JavaScript是不能实现的。框架对于这种行为会发生运行时报错。
+
+
+
+#### 基础嵌套对象属性更改失效
+
+在应用开发中，有很多嵌套对象场景，例如，开发者更新了某个属性，但UI没有进行对应的更新。
+
+每个装饰器都有自己可以观察的能力，并不是所有的改变都可以被观察到，只有可以被观察到的变化才会进行UI更新。@Observed装饰器可以观察到嵌套对象的属性变化，其他装饰器仅能观察到第二层的变化。
+
+
+
+#### 复杂嵌套对象属性更改失效
+
+（我理解是通过嵌套@Component与@OjectLink搭配使用）实现“两个层级”的观察，即外部对象和内部嵌套对象的观察。但是该方法只能用于@ObjectLink装饰器，无法作用于@Prop（@Prop通过深拷贝传入对象）。详情参考@Prop与@ObjectLink的差异。
+
+
+
+#### @Prop与@ObjectLink的差异
+
+在下面的示例代码中，@ObjectLink装饰的变量是对数据源的引用，即在this.value.subValue和this.subValue都是同一个对象的不同引用，所以在点击CounterComp的click handler，改变this.value.subCounter.counter，this.subValue.counter也会改变，对应的组件Text(\`this.subValue.counter: ${this.subValue.counter}\`)会刷新。
+
+```ts
+let nextId = 1;
+
+@Observed
+class SubCounter {
+  counter: number;
+
+  constructor(c: number) {
+    this.counter = c;
+  }
+}
+
+@Observed
+class ParentCounter {
+  id: number;
+  counter: number;
+  subCounter: SubCounter;
+
+  incrCounter() {
+    this.counter++;
+  }
+
+  incrSubCounter(c: number) {
+    this.subCounter.counter += c;
+  }
+
+  setSubCounter(c: number): void {
+    this.subCounter.counter = c;
+  }
+
+  constructor(c: number) {
+    this.id = nextId++;
+    this.counter = c;
+    this.subCounter = new SubCounter(c);
+  }
+}
+
+@Component
+struct CounterComp {
+  @ObjectLink value: ParentCounter;
+
+  build() {
+    Column({ space: 10 }) {
+      CountChild({ subValue: this.value.subCounter })
+      Text(`this.value.counter：increase 7 `)
+        .fontSize(30)
+        .onClick(() => {
+          // click handler, Text(`this.subValue.counter: ${this.subValue.counter}`) will update
+          this.value.incrSubCounter(7);
+        })
+      Divider().height(2)
+    }
+  }
+}
+
+@Component
+struct CountChild {
+  @ObjectLink subValue: SubCounter;
+
+  build() {
+    Text(`this.subValue.counter: ${this.subValue.counter}`)
+      .fontSize(30)
+  }
+}
+
+@Entry
+@Component
+struct ParentComp {
+  @State counter: ParentCounter[] = [new ParentCounter(1), new ParentCounter(2), new ParentCounter(3)];
+
+  build() {
+    Row() {
+      Column() {
+        CounterComp({ value: this.counter[0] })
+        CounterComp({ value: this.counter[1] })
+        CounterComp({ value: this.counter[2] })
+        Divider().height(5)
+        ForEach(this.counter,
+          (item: ParentCounter) => {
+            CounterComp({ value: item })
+          },
+          (item: ParentCounter) => item.id.toString()
+        )
+        Divider().height(5)
+        Text('Parent: reset entire counter')
+          .fontSize(20).height(50)
+          .onClick(() => {
+            this.counter = [new ParentCounter(1), new ParentCounter(2), new ParentCounter(3)];
+          })
+        Text('Parent: incr counter[0].counter')
+          .fontSize(20).height(50)
+          .onClick(() => {
+            this.counter[0].incrCounter();
+            this.counter[0].incrSubCounter(10);
+          })
+        Text('Parent: set.counter to 10')
+          .fontSize(20).height(50)
+          .onClick(() => {
+            this.counter[0].setSubCounter(10);
+          })
+      }
+    }
+  }
+}
+```
+
+@ObjectLink图示如下：
+
+![image-20240305144328479](./ArkTS.assets/image-20240305144328479.png)
+
+@Prop拷贝的关系图示如下：
+
+![image-20240305144927340](./ArkTS.assets/image-20240305144927340.png)
+
+
+
+
+
+#### 在@Observed装饰类的构造函数中延时更改成员变量
+
+在状态管理中，使用@Observed装饰类后，会给该类使用一层“代理”进行包装。当在组件中改变该类的成员变量时，会被该代理进行拦截，在更改数据源中值的同时，也会将变化通知给绑定的组件，从而实现观测变化与触发刷新。当开发者在类的构造函数中对成员变量进行赋值或者修改时，此修改不会经过代理（因为是直接对数据源中的值进行修改），也就无法被观测到。所以，如果开发者在类的构造函数中使用定时器修改类中的成员变量，即使该修改成功执行了，也不会触发UI的刷新。
+
+
+
+#### 在@Observed装饰的类内使用static方法进行初始化
+
+在@Observed装饰的类内，尽量避免使用static方法进行初始化，在创建时会绕过Observed的实现，导致无法被代理，UI不刷新。
+
+
+
+
+
+## 管理应用拥有的状态概述
+
+上一章节中介绍的装饰器仅能在页面内，即一个组件树上共享状态变量。如果开发者要实现应用级的，或者多个页面的状态数据共享，就需要用到应用级别的状态管理的概念。ArkTS根据不同特性，提供了多种应用状态管理的能力：
+
++ [LocalStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md)：**页面级UI状态存储**，通常用于[UIAbility](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-app-ability-uiAbility.md)内、页面间的状态共享。
++ [AppStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md)：**特殊的单例LocalStorage对象**，由UI框架在应用程序启动时创建，**为应用程序UI状态属性提供中央存储**；
++ [PersistentStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-persiststorage.md)：**持久化存储UI状态**，通常和AppStorage配合使用，选择AppStorage存储的数据写入磁盘，以确保这些属性在应用程序重新启动时的值与应用程序关闭时的值相同；
++ [Environment](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-environment.md)：应用程序运行的**设备的环境参数**，环境参数**会同步到AppStorage中**，可以和AppStorage搭配使用。
+
+
+
+## LocalStorage：页面级UI状态存储
+
+LocalStorage是页面级的UI状态存储，通过@Entry装饰器接收的参数可以在页面内共享同一个LocalStorage实例。LocalStorage支持UIAbility实例内多个页面间状态共享。
+
+本文仅介绍LocalStorage使用场景和相关的装饰器：@LocalStorageProp和@LocalStorageLink。
+
+
+
+### 概述
+
+LocalStorage是ArkTS为构建页面级别状态变量提供存储的内存内“数据库”。
+
++ **应用程序可以创建多个LocalStorage实例**，LocalStorage实例可以在页面内共享，也可以通过GetShared接口，实现跨页面、UIAbility实例内共享。
++ **组件数的根节点**，即被@Entry装饰的@Component，可以被分配一个LocalStorage实例，此组件的所有子组件实例将自动获得对该LocalStorage实例的访问权限。
++ **被@Component装饰的组件最多可以访问一个LocalStorage实例和[AppStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md)**，**未被@Entry装饰的组件不可被独立分配LocalStorage实例，只能接收父组件通过@Entry传递来的LocalStorage实例**。**一个LocalStorage实例在组件树上可以被分配给多个组件**。
++ LocalStorage中的**所有属性都是可变的**。
+
+应用程序决定LocalStorage对象的生命周期。当应用释放最后一个指向LocalStorage的引用时，比如销毁最后一个自定义组件，LocalStorage将被JS Engine垃圾回收。
+
+LocalStorage根据与@Component装饰的组件的同步类型不同，提供了两个装饰器：
+
+- [@LocalStorageProp](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#localstorageprop)：@LocalStorageProp装饰的变量和与LocalStorage中给定属性建立单向同步关系。
+- [@LocalStorageLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#localstoragelink)：@LocalStorageLink装饰的变量和在@Component中创建与LocalStorage中给定属性建立双向同步关系。
+
+
+
+### 限制条件
+
+- LocalStorage创建后，命名属性的类型不可更改。后续调用Set时必须使用相同类型的值。
+- LocalStorage是页面级存储，[getShared](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-state-management.md#getshared10)接口仅能获取当前Stage通过[windowStage.loadContent](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-window.md#loadcontent9)传入的LocalStorage实例，否则返回undefined。例子可见[将LocalStorage实例从UIAbility共享到一个或多个视图](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#将localstorage实例从uiability共享到一个或多个视图)。
+
+
+
+### @LocalStorageProp
+
+在上文中已经提到，如果要建立LocalStorage和自定义组件的联系，需要使用@LocalStorageProp和@LocalStorageLink装饰器。使用`@LocalStorageProp(key)/@LocalStorageLink(key)`装饰组件内的变量，**key标识了LocalStorage的属性**。
+
+当自定义组件初始化的时候，@LocalStorageProp(key)/@LocalStorageLink(key)装饰的变量会**通过给定的key，绑定LocalStorage对应的属性，完成初始化**。本地初始化是必要的，因为无法保证LocalStorage一定存在给定的key（这取决于应用逻辑是否在组件初始化之前在LocalStorage实例中存入对应的属性）。
+
+@LocalStorageProp(key)是和LocalStorage中key对应的属性建立单向数据同步，ArkUI框架支持修改@LocalStorageProp(key)在本地的值，但是对本地值的修改不会同步回LocalStorage中。相反，如果LocalStorage中key对应的属性值发生改变，例如通过set接口对LocalStorage中的值进行修改，改变会同步给@LocalStorageProp(key)，并覆盖掉本地的值。
+
+#### 装饰器使用规则说明
+
+| @LocalStorageProp变量装饰器 | 说明                                                         |
+| :-------------------------- | :----------------------------------------------------------- |
+| 装饰器参数                  | key：常量字符串，必填（字符串需要有引号）。                  |
+| 允许装饰的变量类型          | Object、class、string、number、boolean、enum类型，以及这些类型的数组。嵌套类型的场景请参考[观察变化和行为表现](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#观察变化和行为表现)。 类型必须被指定，建议和LocalStorage中对应属性类型相同，否则会发生类型隐式转换，从而导致应用行为异常。不支持any，不允许使用undefined和null。 |
+| 同步类型                    | **单向**同步：从LocalStorage的对应属性到组件的状态变量。组件本地的修改是允许的，但是LocalStorage中给定的属性一旦发生变化，将覆盖本地的修改。 |
+| 被装饰变量的初始值          | **必须指定**，如果LocalStorage实例中不存在属性，则作为初始化默认值，并存入LocalStorage中。 |
+
+#### 变量的传递/访问规则说明
+
+| 传递/访问            | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父节点初始化和更新 | **禁止**，**@LocalStorageProp不支持从父节点初始化，只能从LocalStorage中key对应的属性初始化，如果没有对应key的话，将使用本地默认值初始化。** |
+| 初始化子节点         | **支持**，可用于初始化@State、@Link、@Prop、@Provide。       |
+| 是否支持组件外访问   | 否。                                                         |
+
+@LocalStorageProp初始化规则
+
+![image-20240305161225582](./ArkTS.assets/image-20240305161225582.png)
+
+
+
+#### 观察变化和行为表现
+
+##### 1、观察变化
+
+- 当装饰的数据类型为`boolean、string、number`类型时，可以观察到数值的变化。
+- 当装饰的数据类型为`class`或者`Object`时，可以观察到赋值和属性赋值的变化，即Object.keys(observedObject)返回的所有属性。
+- 当装饰的对象是`array`时，可以观察到数组添加、删除、更新数组单元的变化。
+
+##### 2、框架行为
+
+- 当@LocalStorageProp(key)装饰的数值改变被观察到时，修改不会被同步回LocalStorage对应属性键值key的属性中。
+- 当前@LocalStorageProp(key)单向绑定的数据会被修改，即仅限于当前组件的私有成员变量改变，其他的绑定该key的数据不会同步改变。
+- 当@LocalStorageProp(key)装饰的数据本身是状态变量，它的改变虽然不会同步回LocalStorage中，但是**会引起所属的自定义组件的重新渲染**。
+- 当LocalStorage中key对应的属性发生改变时，会同步给所有@LocalStorageProp(key)装饰的数据，@LocalStorageProp(key)本地的修改将被覆盖。
+
+
+
+### LocalStorageLink
+
+如果我们需要将自定义组件的状态变量的更新同步回LocalStorage，就需要用到@LocalStorageLink。
+
+@LocalStorageLink(key)是和LocalStorage中key对应的属性建立双向数据同步：
+
+1. 本地修改发生，该修改会被写回LocalStorage中；
+2. LocalStorage中的修改发生后，该修改会被同步到所有绑定LocalStorage对应key的属性上，包括单向（@LocalStorageProp和通过prop创建的单向绑定变量）、双向（@LocalStorageLink和通过link创建的双向绑定变量）变量。
+
+#### 装饰器使用规则说明
+
+| @LocalStorageLink变量装饰器 | 说明                                                         |
+| :-------------------------- | :----------------------------------------------------------- |
+| 装饰器参数                  | key：常量字符串，必填（字符串需要有引号）。                  |
+| 允许装饰的变量类型          | Object、class、string、number、boolean、enum类型，以及这些类型的数组。嵌套类型的场景请参考[观察变化和行为表现](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-localstorage.md#观察变化和行为表现)。 类型必须被指定，建议和LocalStorage中对应属性类型相同，否则会发生类型隐式转换，从而导致应用行为异常。不支持any，不允许使用undefined和null。 |
+| 同步类型                    | **双向**同步：从LocalStorage的对应属性到自定义组件，从自定义组件到LocalStorage对应属性。 |
+| 被装饰变量的初始值          | **必须指定**，如果LocalStorage实例中不存在属性，则作为初始化默认值，并存入LocalStorage中。 |
+
+#### 变量的传递/访问规则说明
+
+| 传递/访问            | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父节点初始化和更新 | 禁止，@LocalStorageLink不支持从父节点初始化，只能从LocalStorage中key对应的属性初始化，如果没有对应key的话，将使用本地默认值初始化。 |
+| 初始化子节点         | 支持，可用于初始化@State、@Link、@Prop、@Provide。           |
+| 是否支持组件外访问   | 否。                                                         |
+
+ @LocalStorageLink初始化规则图示
+
+![image-20240305161326698](./ArkTS.assets/image-20240305161326698.png)
+
+#### 观察变化和行为表现
+
+##### 观察变化
+
+- 当装饰的数据类型为boolean、string、number类型时，可以观察到数值的变化。
+- 当装饰的数据类型为class或者Object时，可以观察到赋值和属性赋值的变化，即Object.keys(observedObject)返回的所有属性。
+- 当装饰的对象是array时，可以观察到数组添加、删除、更新数组单元的变化。
+
+##### 框架行为
+
+1. 当@LocalStorageLink(key)装饰的数值改变被观察到时，修改将被同步回LocalStorage对应属性键值key的属性中。
+2. LocalStorage中属性键值key对应的数据一旦改变，属性键值key绑定的所有的数据（包括双向@LocalStorageLink和单向@LocalStorageProp）都将同步修改。
+3. 当@LocalStorageLink(key)装饰的数据本身是状态变量，它的改变不仅仅会同步回LocalStorage中，还会引起所属的自定义组件的重新渲染。
+
+
+
+### 使用场景
+
+#### 应用逻辑使用LocalStorage
+
+```ts
+let para: Record<string,number> = { 'PropA': 47 };
+let storage: LocalStorage = new LocalStorage(para); // 创建新实例并使用给定对象初始化
+let propA: number | undefined = storage.get('PropA') // propA == 47
+let link1: SubscribedAbstractProperty<number> = storage.link('PropA'); // link1.get() == 47
+let link2: SubscribedAbstractProperty<number> = storage.link('PropA'); // link2.get() == 47
+let prop: SubscribedAbstractProperty<number> = storage.prop('PropA'); // prop.get() == 47
+link1.set(48); // two-way sync: link1.get() == link2.get() == prop.get() == 48
+prop.set(1); // one-way sync: prop.get() == 1; but link1.get() == link2.get() == 48
+link1.set(49); // two-way sync: link1.get() == link2.get() == prop.get() == 49
+```
+
+#### 从UI内部使用LocalStorage
+
+除了应用程序逻辑使用LocalStorage，还可以借助LocalStorage相关的两个装饰器@LocalStorageProp和@LocalStorageLink，在UI组件内部获取到LocalStorage实例中存储的状态变量。
+
+本示例以@LocalStorageLink为例，展示了：
+
+- 使用构造函数创建LocalStorage实例storage；
+- 使用@Entry装饰器将storage添加到CompA顶层组件中；
+- @LocalStorageLink绑定LocalStorage对给定的属性，建立双向数据同步。
+
+```ts
+// 创建新实例并使用给定对象初始化
+let para: Record<string, number> = { 'PropA': 47 };
+let storage: LocalStorage = new LocalStorage(para);
+
+@Component
+struct Child {
+ // @LocalStorageLink变量装饰器与LocalStorage中的'PropA'属性建立双向绑定
+ @LocalStorageLink('PropA') storageLink2: number = 1;
+
+ build() {
+   Button(`Child from LocalStorage ${this.storageLink2}`)
+     // 更改将同步至LocalStorage中的'PropA'以及Parent.storageLink1
+     .onClick(() => {
+       this.storageLink2 += 1
+     })
+ }
+}
+// 使LocalStorage可从@Component组件访问
+@Entry(storage)
+@Component
+struct CompA {
+ // @LocalStorageLink变量装饰器与LocalStorage中的'PropA'属性建立双向绑定
+ @LocalStorageLink('PropA') storageLink1: number = 1;
+
+ build() {
+   Column({ space: 15 }) {
+     Button(`Parent from LocalStorage ${this.storageLink1}`) // initial value from LocalStorage will be 47, because 'PropA' initialized already
+       .onClick(() => {
+         this.storageLink1 += 1
+       })
+     // @Component子组件自动获得对CompA LocalStorage实例的访问权限。
+     Child()
+   }
+ }
+}
+```
+
+#### @LocalStorageProp和LocalStorage单向同步的简单场景
+
+在下面的示例中，CompA 组件和Child组件分别在本地创建了与storage的’PropA’对应属性的单向同步的数据，我们可以看到：
+
+- CompA中对this.storProp1的修改，只会在CompA中生效，并没有同步回storage；
+- Child组件中，Text绑定的storProp2 依旧显示47。
+
+```ts
+// 创建新实例并使用给定对象初始化
+let para: Record<string, number> = { 'PropA': 47 };
+let storage: LocalStorage = new LocalStorage(para);
+// 使LocalStorage可从@Component组件访问
+@Entry(storage)
+@Component
+struct CompA {
+  // @LocalStorageProp变量装饰器与LocalStorage中的'PropA'属性建立单向绑定
+  @LocalStorageProp('PropA') storageProp1: number = 1;
+
+  build() {
+    Column({ space: 15 }) {
+      // 点击后从47开始加1，只改变当前组件显示的storageProp1，不会同步到LocalStorage中
+      Button(`Parent from LocalStorage ${this.storageProp1}`)
+        .onClick(() => {
+          this.storageProp1 += 1
+        })
+      Child()
+    }
+  }
+}
+
+@Component
+struct Child {
+  // @LocalStorageProp变量装饰器与LocalStorage中的'PropA'属性建立单向绑定
+  @LocalStorageProp('PropA') storageProp2: number = 2;
+
+  build() {
+    Column({ space: 15 }) {
+      // 当CompA改变时，当前storageProp2不会改变，显示47
+      Text(`Parent from LocalStorage ${this.storageProp2}`)
+    }
+  }
+}
+```
+
+#### @LocalStorageLink和LocalStorage双向同步的简单场景
+
+下面的示例展示了@LocalStorageLink装饰的数据和LocalStorage双向同步的场景：
+
+```ts
+// 构造LocalStorage实例
+let para: Record<string, number> = { 'PropA': 47 };
+let storage: LocalStorage = new LocalStorage(para);
+// 调用link（api9以上）接口构造'PropA'的双向同步数据，linkToPropA 是全局变量
+let linkToPropA: SubscribedAbstractProperty<object> = storage.link('PropA');
+
+@Entry(storage)
+@Component
+struct CompA {
+
+  // @LocalStorageLink('PropA')在CompA自定义组件中创建'PropA'的双向同步数据，初始值为47，因为在构造LocalStorage已经给“PropA”设置47
+  @LocalStorageLink('PropA') storageLink: number = 1;
+
+  build() {
+    Column() {
+      Text(`incr @LocalStorageLink variable`)
+        // 点击“incr @LocalStorageLink variable”，this.storageLink加1，改变同步回storage，全局变量linkToPropA也会同步改变
+
+        .onClick(() => {
+          this.storageLink += 1
+        })
+
+      // 并不建议在组件内使用全局变量linkToPropA.get()，因为可能会有生命周期不同引起的错误。
+      Text(`@LocalStorageLink: ${this.storageLink} - linkToPropA: ${linkToPropA.get()}`)
+    }
+  }
+}
+```
+
+#### 兄弟组件之间同步状态变量
+
+下面的示例展示了通过@LocalStorageLink双向同步兄弟组件之间的状态。
+
+先看Parent自定义组件中发生的变化：
+
+1. 点击“playCount ${this.playCount} dec by 1”，this.playCount减1，修改同步回LocalStorage中，Child组件中的playCountLink绑定的组件会同步刷新；
+2. 点击“countStorage ${this.playCount} incr by 1”，调用LocalStorage的set接口，更新LocalStorage中“countStorage”对应的属性，Child组件中的playCountLink绑定的组件会同步刷新；
+3. Text组件“playCount in LocalStorage for debug ${storage.get<number>(‘countStorage’)}”没有同步刷新，因为storage.get<number>(‘countStorage’)返回的是常规变量，常规变量的更新并不会引起Text组件的重新渲染。
+
+Child自定义组件中的变化：
+
+1. playCountLink的刷新会同步回LocalStorage，并且引起兄弟组件和父组件相应的刷新。
+
+```ts
+let ls: Record<string, number> = { 'countStorage': 1 }
+let storage: LocalStorage = new LocalStorage(ls);
+
+@Component
+struct Child {
+  // 子组件实例的名字
+  label: string = 'no name';
+  // 和LocalStorage中“countStorage”的双向绑定数据
+  @LocalStorageLink('countStorage') playCountLink: number = 0;
+
+  build() {
+    Row() {
+      Text(this.label)
+        .width(50).height(60).fontSize(12)
+      Text(`playCountLink ${this.playCountLink}: inc by 1`)
+        .onClick(() => {
+          this.playCountLink += 1;
+        })
+        .width(200).height(60).fontSize(12)
+    }.width(300).height(60)
+  }
+}
+
+@Entry(storage)
+@Component
+struct Parent {
+  @LocalStorageLink('countStorage') playCount: number = 0;
+
+  build() {
+    Column() {
+      Row() {
+        Text('Parent')
+          .width(50).height(60).fontSize(12)
+        Text(`playCount ${this.playCount} dec by 1`)
+          .onClick(() => {
+            this.playCount -= 1;
+          })
+          .width(250).height(60).fontSize(12)
+      }.width(300).height(60)
+
+      Row() {
+        Text('LocalStorage')
+          .width(50).height(60).fontSize(12)
+        Text(`countStorage ${this.playCount} incr by 1`)
+          .onClick(() => {
+            storage.set<number | undefined>('countStorage', Number(storage.get<number>('countStorage')) + 1);
+          })
+          .width(250).height(60).fontSize(12)
+      }.width(300).height(60)
+
+      Child({ label: 'ChildA' })
+      Child({ label: 'ChildB' })
+
+      Text(`playCount in LocalStorage for debug ${storage.get<number>('countStorage')}`)
+        .width(300).height(60).fontSize(12)
+    }
+  }
+}
+```
+
+#### 将LocalStorage实例从UIAbility共享到一个或多个视图
+
+上面的实例中，LocalStorage的实例仅仅在一个@Entry装饰的组件和其所属的子组件（一个页面）中共享，如果希望其在多个视图中共享，可以在所属UIAbility中创建LocalStorage实例，并调用windowStage.[loadContent](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-window.md#loadcontent9)。
+
+```ts
+// EntryAbility.ts
+import UIAbility from '@ohos.app.ability.UIAbility';
+import window from '@ohos.window';
+
+export default class EntryAbility extends UIAbility {
+    para:Record<string, number> = { 'PropA': 47 };
+    storage: LocalStorage = new LocalStorage(this.para);
+
+    onWindowStageCreate(windowStage: window.WindowStage) {
+        windowStage.loadContent('pages/Index', this.storage);
+    }
+}
+```
+
+> **说明：**
+>
+> 在UI页面通过getShared接口获取通过loadContent共享的LocalStorage实例。
+>
+> LocalStorage.getShared()只在模拟器或者实机上才有效，在Previewer预览器中使用不生效。
+
+在下面的用例中，Index页面中的propA通过getShared()方法获取到共享的LocalStorage实例。点击Button跳转到Page页面，点击Change propA改变propA的值，back回Index页面后，页面中propA的值也同步修改。
+
+```ts
+// index.ets
+import router from '@ohos.router';
+
+// 通过getShared接口获取stage共享的LocalStorage实例
+let storage = LocalStorage.getShared()
+
+@Entry(storage)
+@Component
+struct Index {
+  // can access LocalStorage instance using 
+  // @LocalStorageLink/Prop decorated variables
+  @LocalStorageLink('PropA') propA: number = 1;
+
+  build() {
+    Row() {
+      Column() {
+        Text(`${this.propA}`)
+          .fontSize(50)
+          .fontWeight(FontWeight.Bold)
+        Button("To Page")
+          .onClick(() => {
+            router.pushUrl({
+              url: 'pages/Page'
+            })
+          })
+      }
+      .width('100%')
+    }
+    .height('100%')
+  }
+}
+ts
+// Page.ets
+import router from '@ohos.router';
+
+let storage = LocalStorage.getShared()
+
+@Entry(storage)
+@Component
+struct Page {
+  @LocalStorageLink('PropA') propA: number = 2;
+
+  build() {
+    Row() {
+      Column() {
+        Text(`${this.propA}`)
+          .fontSize(50)
+          .fontWeight(FontWeight.Bold)
+
+        Button("Change propA")
+          .onClick(() => {
+            this.propA = 100;
+          })
+
+        Button("Back Index")
+          .onClick(() => {
+            router.back()
+          })
+      }
+      .width('100%')
+    }
+  }
+}
+```
+
+> **说明：**
+>
+> 对于开发者更建议使用这个方式来构建LocalStorage的实例，并且在创建LocalStorage实例的时候就写入默认值，因为默认值可以作为运行异常的备份，也可以用作页面的单元测试。
