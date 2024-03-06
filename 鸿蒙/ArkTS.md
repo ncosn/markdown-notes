@@ -3590,3 +3590,321 @@ struct Page {
 > **说明：**
 >
 > 对于开发者更建议使用这个方式来构建LocalStorage的实例，并且在创建LocalStorage实例的时候就写入默认值，因为默认值可以作为运行异常的备份，也可以用作页面的单元测试。
+
+
+
+## AppStorage：应用全局的UI状态存储
+
+AppStorage是应用全局的UI状态存储，是和应用的进程绑定的，由UI框架在应用程序启动时创建，为应用程序UI状态属性提供中央存储。
+
+和AppStorage不同的是，LocalStorage是页面级的，通常应用于页面内的数据共享。而AppStorage是应用级的全局状态共享，还相当于整个应用的“中枢”，[持久化数据PersistentStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-persiststorage.md)和[环境变量Environment](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-environment.md)**都是通过AppStorage中转**，才可以和UI交互。
+
+
+
+### 概述
+
+AppStorage是在应用启动的时候会被创建的单例。他的目的是为了提供应用状态数据的中心存储，这些状态数据在应用级别都是可访问的。AppStorage将在应用运行过程保留期属性。属性通过唯一的键字符串值访问。
+
+AppStorage可以和UI组件同步，且可以在应用业务逻辑中被访问。
+
+AppStorage支持应用的[主线程](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/application-models/thread-model-stage.md)内多个UIAbility实例间的状态共享。
+
+AppStorage中的属性可以被双向同步，数据可以是存在于本地或远程设备上，并具有不同的功能，比如数据持久化（详见[PersistentStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-persiststorage.md)）。这些数据是通过业务逻辑中实现，与UI解耦，如果希望这些数据在UI中使用，需要用到[@StorageProp](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#storageprop)和[@StorageLink](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#storagelink)。
+
+### @StorageProp
+
+在上文中已经提到，如果要建立AppStorage和自定义组件的联系，需要使用@StorageProp和@StorageLink装饰器。使用@StorageProp(key)/@StorageLink(key)装饰组件内的变量，key标识了AppStorage的属性。
+
+**当自定义组件初始化的时候，会使用AppStorage中对应key的属性值将@StorageProp(key)/@StorageLink(key)装饰的变量初始化**。由于应用逻辑的差异，无法确认是否在组件初始化之前向AppStorage实例中存入了对应的属性，所以**AppStorage不一定存在key对应的属性**，**因此@StorageProp(key)/@StorageLink(key)装饰的变量进行本地初始化是必要的**。
+
+@StorageProp(key)是和AppStorage中key对应的属性建立单向数据同步，允许本地改变，但是对于@StorageProp，本地的修改永远不会同步回AppStorage中，相反，如果AppStorage给定key的属性发生改变，改变会被同步给@StorageProp，并覆盖掉本地的修改。
+
+#### 装饰器使用规则说明
+
+| @StorageProp变量装饰器 | 说明                                                         |
+| :--------------------- | :----------------------------------------------------------- |
+| 装饰器参数             | key：常量字符串，必填（字符串需要有引号）。                  |
+| 允许装饰的变量类型     | Object、 class、string、number、boolean、enum类型，以及这些类型的数组。嵌套类型的场景请参考[观察变化和行为表现](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#观察变化和行为表现)。 类型必须被指定，建议和AppStorage中对应属性类型相同，否则会发生类型隐式转换，从而导致应用行为异常。不支持any，不允许使用undefined和null。 |
+| 同步类型               | 单向同步：从AppStorage的对应属性到组件的状态变量。 组件本地的修改是允许的，但是AppStorage中给定的属性一旦发生变化，将覆盖本地的修改。 |
+| 被装饰变量的初始值     | **必须指定**，如果AppStorage实例中不存在属性，则作为初始化默认值，并存入AppStorage中。 |
+
+#### 变量的传递/访问规则说明
+
+| 传递/访问            | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父节点初始化和更新 | 禁止，@StorageProp不支持从父节点初始化，只能AppStorage中key对应的属性初始化，如果没有对应key的话，将使用本地默认值初始化 |
+| 初始化子节点         | 支持，可用于初始化@State、@Link、@Prop、@Provide。           |
+| 是否支持组件外访问   | 否。                                                         |
+
+@StorageProp初始化规则图示
+
+![image-20240306094848960](./ArkTS.assets/image-20240306094848960.png)
+
+#### 观察变化和行为表现
+
+##### 观察变化
+
+- 当装饰的数据类型为boolean、string、number类型时，可以观察到数值的变化。
+- 当装饰的数据类型为class或者Object时，可以观察到赋值和属性赋值的变化，即Object.keys(observedObject)返回的所有属性。
+- 当装饰的对象是array时，可以观察到数组添加、删除、更新数组单元的变化。
+
+##### 框架行为
+
+- 当@StorageProp(key)装饰的数值改变被观察到时，修改不会被同步回AppStorage对应属性键值key的属性中。
+- 当前@StorageProp(key)单向绑定的数据会被修改，即仅限于当前组件的私有成员变量改变，其他的绑定该key的数据不会同步改变。
+- 当@StorageProp(key)装饰的数据本身是状态变量，它的改变虽然不会同步回AppStorage中，但是会引起所属的自定义组件的重新渲染。
+- 当AppStorage中key对应的属性发生改变时，会同步给所有@StorageProp(key)装饰的数据，@StorageProp(key)本地的修改将被覆盖。
+
+### @StorageLink
+
+@StorageLink(key)是和AppStorage中key对应的属性建立双向数据同步：
+
+1. 本地修改发生，该修改会被写回AppStorage中；
+2. AppStorage中的修改发生后，该修改会被同步到所有绑定AppStorage对应key的属性上，包括单向（@StorageProp和通过Prop创建的单向绑定变量）、双向（@StorageLink和通过Link创建的双向绑定变量）变量和其他实例（比如PersistentStorage）。
+
+#### 装饰器使用规则说明
+
+| @StorageLink变量装饰器 | 说明                                                         |
+| :--------------------- | :----------------------------------------------------------- |
+| 装饰器参数             | key：常量字符串，必填（字符串需要有引号）。                  |
+| 允许装饰的变量类型     | Object、class、string、number、boolean、enum类型，以及这些类型的数组。嵌套类型的场景请参考[观察变化和行为表现](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#观察变化和行为表现)。 类型必须被指定，建议和AppStorage中对应属性类型相同，否则会发生类型隐式转换，从而导致应用行为异常。不支持any，不允许使用undefined和null。 |
+| 同步类型               | 双向同步：从AppStorage的对应属性到自定义组件，从自定义组件到AppStorage对应属性。 |
+| 被装饰变量的初始值     | 必须指定，如果AppStorage实例中不存在属性，则作为初始化默认值，并存入AppStorage中。 |
+
+#### 变量的传递/访问规则说明
+
+| 传递/访问            | 说明                                                         |
+| :------------------- | :----------------------------------------------------------- |
+| 从父节点初始化和更新 | 禁止。                                                       |
+| 初始化子节点         | 支持，可用于初始化常规变量、@State、@Link、@Prop、@Provide。 |
+| 是否支持组件外访问   | 否。                                                         |
+
+@StorageLink初始化规则图示
+
+![image-20240306095526489](./ArkTS.assets/image-20240306095526489.png)
+
+#### 观察变化和行为表现
+
+##### 观察变化
+
+- 当装饰的数据类型为boolean、string、number类型时，可以观察到数值的变化。
+- 当装饰的数据类型为class或者Object时，可以观察到赋值和属性赋值的变化，即Object.keys(observedObject)返回的所有属性。
+- 当装饰的对象是array时，可以观察到数组添加、删除、更新数组单元的变化。
+
+##### 框架行为
+
+1. 当@StorageLink(key)装饰的数值改变被观察到时，修改将被同步回AppStorage对应属性键值key的属性中。
+2. AppStorage中属性键值key对应的数据一旦改变，属性键值key绑定的所有的数据（包括双向@StorageLink和单向@StorageProp）都将同步修改；
+3. 当@StorageLink(key)装饰的数据本身是状态变量，它的改变不仅仅会同步回AppStorage中，还会引起所属的自定义组件的重新渲染。
+
+
+
+###　使用场景
+
+#### 从应用逻辑使用AppStorage和LocalStorage
+
+**AppStorage是单例，它的所有API都是静态的**，使用方法类似于中LocalStorage对应的非静态方法。
+
+```ts
+AppStorage.setOrCreate('PropA', 47);
+
+let storage: LocalStorage = new LocalStorage();
+storage.setOrCreate('PropA',17);
+let propA: number | undefined = AppStorage.get('PropA') // propA in AppStorage == 47, propA in LocalStorage == 17
+let link1: SubscribedAbstractProperty<number> = AppStorage.link('PropA'); // link1.get() == 47
+let link2: SubscribedAbstractProperty<number> = AppStorage.link('PropA'); // link2.get() == 47
+let prop: SubscribedAbstractProperty<number> = AppStorage.prop('PropA'); // prop.get() == 47
+
+link1.set(48); // two-way sync: link1.get() == link2.get() == prop.get() == 48
+prop.set(1); // one-way sync: prop.get() == 1; but link1.get() == link2.get() == 48
+link1.set(49); // two-way sync: link1.get() == link2.get() == prop.get() == 49
+
+storage.get<number>('PropA') // == 17
+storage.set('PropA', 101);
+storage.get<number>('PropA') // == 101
+
+AppStorage.get<number>('PropA') // == 49
+link1.get() // == 49
+link2.get() // == 49
+prop.get() // == 49
+```
+
+#### 从UI内部使用AppStorage和LocalStorage
+
+@StorageLink变量装饰器与AppStorage配合使用，正如@LocalStorageLink与LocalStorage配合使用一样。此装饰器使用AppStorage中的属性创建双向数据同步。
+
+```ts
+AppStorage.setOrCreate('PropA', 47);
+let storage = new LocalStorage();
+storage.setOrCreate('PropA', 48);
+
+@Entry(storage)
+@Component
+struct CompA {
+  @StorageLink('PropA') storageLink: number = 1;
+  @LocalStorageLink('PropA') localStorageLink: number = 1;
+
+  build() {
+    Column({ space: 20 }) {
+      Text(`From AppStorage ${this.storageLink}`)
+        .onClick(() => {
+          this.storageLink += 1
+        })
+
+      Text(`From LocalStorage ${this.localStorageLink}`)
+        .onClick(() => {
+          this.localStorageLink += 1
+        })
+    }
+  }
+}
+```
+
+
+
+#### 不建议借助@StorageLink的双向同步机制实现事件通知
+
+不建议开发者使用@StorageLink和AppStorage的双向同步的机制来实现事件通知，因为AppStorage中的变量可能绑定在多个不同页面的组件中，但事件通知则不一定需要通知到所有的这些组件。并且，当这些@StorageLink装饰的变量在UI中使用时，会触发UI刷新，带来不必要的性能影响。
+
+
+
+### 限制条件
+
+AppStorage与[PersistentStorage](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-persiststorage.md)以及[Environment](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-environment.md)配合使用时，需要注意以下几点：
+
+- 在AppStorage中创建属性后，**调用PersistentStorage.persistProp()接口时，会使用在AppStorage中已经存在的值，并覆盖PersistentStorage中的同名属性，所以建议要使用相反的调用顺序**，反例可见[在PersistentStorage之前访问AppStorage中的属性](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-persiststorage.md#在persistentstorage之前访问appstorage中的属性)；
+- 如果在AppStorage中已经创建属性后，**再调用Environment.envProp()创建同名的属性，会调用失败**。因为AppStorage**已经有同名属性**，Environment环境变量**不会再写入AppStorage中**，所以**建议AppStorage中属性不要使用Environment预置环境变量名**。
+- 状态装饰器装饰的变量，改变会引起UI的渲染更新，如果改变的变量不是用于UI更新，**只是用于消息传递，推荐使用 `emitter`方式**。例子可见[不建议借助@StorageLink的双向同步机制实现事件通知](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-appstorage.md#不建议借助storagelink的双向同步机制实现事件通知)。
+
+
+
+## PersistentStorage：持久化存储UI状态
+
+前两个小节介绍的LocalStorage和AppStorage都是运行时的内存，但是在应用退出再次启动后，依然能保存选定的结果，是应用开发中十分常见的现象，这就需要用到PersistentStorage。
+
+PersistentStorage是应用程序中的**可选单例对象**。此对象的作用是**持久化存储选定的AppStorage属性**，以确保这些属性在应用程序重新启动时的值与应用程序关闭时的值相同。
+
+### 概述
+
+PersistentStorage将选定的AppStorage属性保留在设备磁盘上。应用程序通过API，以决定哪些AppStorage属性应借助PersistentStorage持久化。UI和业务逻辑不直接访问PersistentStorage中的属性，所有属性访问都是对AppStorage的访问，**AppStorage中的更改会自动同步到PersistentStorage**。
+
+PersistentStorage和AppStorage中的属性建立**双向同步**。应用开发通常通过AppStorage访问PersistentStorage，另外还有一些接口可以用于管理持久化属性，但是业务逻辑始终是通过AppStorage获取和设置属性的。
+
+
+
+### 限制条件
+
+PersistentStorage允许的类型和值有：
+
++ `number,string,boolean,enum`等简单类型
++ 可以被`JSON.stringify()`和`JSON.parse()`重构的对象。例如`Date,Map,Set`等内置类型则不支持，以及对象的属性方法不支持持久化。
+
+PersistentStorage不允许的类型和值有：
+
++ 不支持嵌套对象（对象数组，对象的属性是对象等）。因为目前框架无法检测AppStorage中嵌套对象（包括数组）值的变化，所以无法写回到PersistentStorage中。
++ 不支持`undefined`和`null`
+
+持久化数据是一个相对缓慢的操作，应用程序应避免以下情况：
+
+- 持久化大型数据集。
+- 持久化经常变化的变量。
+
+PersistentStorage的持久化变量最好是小于2kb的数据，不要大量的数据持久化，因为PersistentStorage写入磁盘的操作是同步的，大量的数据本地化读写会同步在UI线程中执行，影响UI渲染性能。如果开发者需要存储大量的数据，建议使用数据库api。
+
+PersistentStorage和UIContext相关联，需要在[UIContext](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-arkui-UIContext.md#uicontext)明确的时候才可以调用，可以通过在[runScopedTask](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/apis/js-apis-arkui-UIContext.md#runscopedtask)里明确上下文。如果没有在UIContext明确的地方调用，将导致无法持久化数据。
+
+### 使用场景
+
+#### 从AppStorage中访问PersistentStorage初始化的属性
+
+1. 初始化PersistentStorage：
+
+   ```ts
+   PersistentStorage.persistProp('aProp', 47);
+   ```
+
+2. 在AppStorage获取对应属性：
+
+   ```ts
+   AppStorage.get<number>('aProp'); // returns 47
+   ```
+
+   或在组件内部定义：
+
+   ```ts
+   @StorageLink('aProp') aProp: number = 48;
+   ```
+
+完整代码如下：
+
+```ts
+PersistentStorage.persistProp('aProp', 47);
+
+@Entry
+@Component
+struct Index {
+  @State message: string = 'Hello World'
+  @StorageLink('aProp') aProp: number = 48
+
+  build() {
+    Row() {
+      Column() {
+        Text(this.message)
+        // 应用退出时会保存当前结果。重新启动后，会显示上一次的保存结果
+        Text(`${this.aProp}`)
+          .onClick(() => {
+            this.aProp += 1;
+          })
+      }
+    }
+  }
+}
+```
+
+
+
+
+
+## ForEach：循环渲染
+
+ForEach接口基于数组类型数据来进行循环渲染，需要与容器组件配合使用，且接口返回的组件应当是允许包含在ForEach父容器组件中的子组件。例如，ListenItem组件要求ForEach的父容器组件必须为[List组件](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-container-list.md)。
+
+### 接口描述
+
+```ts
+ForEach(
+  arr: Array,
+  itemGenerator: (item: any, index?: number) => void,
+  keyGenerator?: (item: any, index?: number) => string
+)
+```
+
+以下是参数的详细说明：
+
+| 参数名        | 参数类型                                | 是否必填 | 参数描述                                                     |
+| :------------ | :-------------------------------------- | :------- | :----------------------------------------------------------- |
+| arr           | Array                                   | 是       | 数据源，为`Array`类型的数组。 <br />**说明：**<br /> - **可以设置为空数组，此时不会创建子组件**。<br /> - 可以设置返回值为数组类型的函数，例如`arr.slice(1, 3)`，但设置的函数不应改变包括数组本身在内的任何状态变量，例如不应使用`Array.splice()`,`Array.sort()`或`Array.reverse()`这些会改变原数组的函数。 |
+| itemGenerator | `(item: any, index?: number) => void`   | 是       | 组件生成函数。 <br />- 为数组中的每个元素创建对应的组件。<br />- `item`参数：`arr`数组中的数据项。 <br />- `index`参数（可选）：`arr`数组中的数据项索引。 <br />**说明：** <br />- 组件的类型必须是`ForEach`的父容器所允许的。例如，`ListItem`组件要求`ForEach`的父容器组件必须为`List`组件。 |
+| keyGenerator  | `(item: any, index?: number) => string` | 否       | 键值生成函数。 <br />- 为数据源`arr`的每个数组项生成唯一且持久的键值。函数返回值为开发者自定义的键值生成规则。 <br />- `item`参数：`arr`数组中的数据项。 <br />- `index`参数（可选）：`arr`数组中的数据项索引。 <br />**说明：** <br />- 如果函数缺省，框架默认的键值生成函数为`(item: T, index: number) => { return index + '__' + JSON.stringify(item); }` - 键值生成函数不应改变任何组件状态。 |
+
+> **说明：**
+>
+> - `ForEach`的`itemGenerator`函数可以包含`if/else`条件渲染逻辑。另外，也可以在`if/else`条件渲染语句中使用`ForEach`组件。
+> - 在初始化渲染时，`ForEach`会加载数据源的所有数据，并为每个数据项创建对应的组件，然后将其挂载到渲染树上。如果数据源非常大或有特定的性能需求，建议使用`LazyForEach`组件。
+
+### 键值生成规则
+
+在`ForEach`循环渲染过程中，系统会为每个数组元素生成一个唯一且持久的键值，用于标识对应的组件。当这个键值变化时，ArkUI框架将视为该数组元素已被替换或修改，并会基于新的键值创建一个新的组件。
+
+`ForEach`提供了一个名为`keyGenerator`的参数，这是一个函数，开发者可以通过它自定义键值的生成规则。如果开发者没有定义`keyGenerator`函数，则ArkUI框架会使用默认的键值生成函数，即`(item: any, index: number) => { return index + '__' + JSON.stringify(item); }`。
+
+ArkUI框架对于`ForEach`的键值生成有一套特定的判断规则，这主要与`itemGenerator`函数的第二个参数`index`以及`keyGenerator`函数的第二个参数`index`有关，具体的键值生成规则判断逻辑如下图所示。
+
+ForEach键值生成规则
+
+![image-20240306113628353](./ArkTS.assets/image-20240306113628353.png)
+
+> **说明：**
+>
+> ArkUI框架会**对重复的键值发出警告**。在UI更新的场景下，如果出现重复的键值，框架可能无法正常工作，具体请参见[渲染结果非预期](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md#渲染结果非预期)。
+

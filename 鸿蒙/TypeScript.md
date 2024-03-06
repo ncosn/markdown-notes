@@ -1,5 +1,7 @@
 ### TypeScript基础类型
 
+[菜鸟教程](https://www.runoob.com/typescript/ts-tutorial.html)
+
 #### 数据类型
 
 ##### 任意类型：any 
