@@ -1,3 +1,9 @@
+# 目录
+
+[TOC]
+
+
+
 ##　基本语法概述
 
 在初步了解了ArkTS语言之后，我们以一个具体的示例来说明ArkTS的基本组成。如下图所示，当开发者点击按钮时，文本内容从“Hello World”变为“Hello ArkUI”。
@@ -1112,7 +1118,7 @@ struct FancyUse {
 
 
 
-## Extend装饰器：定义扩展组件样式
+## @Extend装饰器：定义扩展组件样式
 
 在前文的示例中，可以使用@Styles用于样式的扩展，在@Styles的基础上，我们提供了@Extend，用于扩展原生组件样式。
 
@@ -3885,7 +3891,7 @@ ForEach(
 | :------------ | :-------------------------------------- | :------- | :----------------------------------------------------------- |
 | arr           | Array                                   | 是       | 数据源，为`Array`类型的数组。 <br />**说明：**<br /> - **可以设置为空数组，此时不会创建子组件**。<br /> - 可以设置返回值为数组类型的函数，例如`arr.slice(1, 3)`，但设置的函数不应改变包括数组本身在内的任何状态变量，例如不应使用`Array.splice()`,`Array.sort()`或`Array.reverse()`这些会改变原数组的函数。 |
 | itemGenerator | `(item: any, index?: number) => void`   | 是       | 组件生成函数。 <br />- 为数组中的每个元素创建对应的组件。<br />- `item`参数：`arr`数组中的数据项。 <br />- `index`参数（可选）：`arr`数组中的数据项索引。 <br />**说明：** <br />- 组件的类型必须是`ForEach`的父容器所允许的。例如，`ListItem`组件要求`ForEach`的父容器组件必须为`List`组件。 |
-| keyGenerator  | `(item: any, index?: number) => string` | 否       | 键值生成函数。 <br />- 为数据源`arr`的每个数组项生成唯一且持久的键值。函数返回值为开发者自定义的键值生成规则。 <br />- `item`参数：`arr`数组中的数据项。 <br />- `index`参数（可选）：`arr`数组中的数据项索引。 <br />**说明：** <br />- 如果函数缺省，框架默认的键值生成函数为`(item: T, index: number) => { return index + '__' + JSON.stringify(item); }` - 键值生成函数不应改变任何组件状态。 |
+| keyGenerator  | `(item: any, index?: number) => string` | 否       | 键值生成函数。 <br />- 为数据源`arr`的每个数组项生成唯一且持久的键值。函数返回值为开发者自定义的键值生成规则。 <br />- `item`参数：`arr`数组中的数据项。 <br />- `index`参数（可选）：`arr`数组中的数据项索引。 <br />**说明：** <br />- 如果函数缺省，框架默认的键值生成函数为`(item: T, index: number) => { return index + '__' + JSON.stringify(item); }` <br />- 键值生成函数不应改变任何组件状态。 |
 
 > **说明：**
 >
@@ -3908,3 +3914,332 @@ ForEach键值生成规则
 >
 > ArkUI框架会**对重复的键值发出警告**。在UI更新的场景下，如果出现重复的键值，框架可能无法正常工作，具体请参见[渲染结果非预期](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md#渲染结果非预期)。
 
+
+
+### 组件创建规则
+
+在确定键值生成规则后，ForEach的第二个参数`itemGenerator`函数会根据键值生成规则为数据源的每个数组项创建组件。组件的创建包括两种情况：[ForEach首次渲染](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#首次渲染)和[ForEach非首次渲染](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#非首次渲染)。
+
+#### 首次渲染
+
+在ForEach首次渲染时，会根据前述键值生成规则为数据源的每个数组项生成唯一键值，并创建相应的组件
+
+```ts
+@Entry
+@Component
+struct Parent {
+  @State simpleList: Array<string> = ['one', 'two', 'three'];
+
+  build() {
+    Row() {
+      Column() {
+        ForEach(this.simpleList, (item: string) => {
+          ChildItem({ item: item })
+        }, (item: string) => item)
+      }
+      .width('100%')
+      .height('100%')
+    }
+    .height('100%')
+    .backgroundColor(0xF1F3F5)
+  }
+}
+
+@Component
+struct ChildItem {
+  @Prop item: string;
+
+  build() {
+    Text(this.item)
+      .fontSize(50)
+  }
+}
+```
+
+在上述代码中，键值生成规则是`keyGenerator`函数的返回值`item`。在ForEach渲染循环时，为数据源数组项依次生成键值`one`、`two`和`three`，并创建对应的`ChildItem`组件渲染到界面上。
+
+当不同数组项按照键值生成规则生成的键值相同时，框架的行为是未定义的。例如，在以下代码中，ForEach渲染相同的数据项`two`时，只创建了一个`ChildItem`组件，而没有创建多个具有相同键值的组件。
+
+```ts
+@Entry
+@Component
+struct Parent {
+  @State simpleList: Array<string> = ['one', 'two', 'two', 'three'];
+
+  build() {
+    Row() {
+      Column() {
+        ForEach(this.simpleList, (item: string) => {
+          ChildItem({ item: item })
+        }, (item: string) => item)
+      }
+      .width('100%')
+      .height('100%')
+    }
+    .height('100%')
+    .backgroundColor(0xF1F3F5)
+  }
+}
+
+@Component
+struct ChildItem {
+  @Prop item: string;
+
+  build() {
+    Text(this.item)
+      .fontSize(50)
+  }
+}
+```
+
+在该示例中，最终键值生成规则为`item`。当ForEach遍历数据源`simpleList`，遍历到索引为1的`two`时，按照最终键值生成规则生成键值为`two`的组件并进行标记。当遍历到索引为2的`two`时，按照最终键值生成规则当前项的键值也为`two`，此时不再创建新的组件。
+
+
+
+#### 非首次渲染
+
+在ForEach组件进行非首次渲染时，它会检查新生成的键值是否在上次渲染中已经存在。**如果键值不存在，则会创建一个新的组件；如果键值存在，则不会创建新的组件，而是直接渲染该键值所对应的组件**。例如，在以下的代码示例中，通过点击事件修改了数组的第三项值为"new three"，这将触发ForEach组件进行非首次渲染。
+
+```ts
+@Entry
+@Component
+struct Parent {
+  @State simpleList: Array<string> = ['one', 'two', 'three'];
+
+  build() {
+    Row() {
+      Column() {
+        Text('点击修改第3个数组项的值')
+          .fontSize(24)
+          .fontColor(Color.Red)
+          .onClick(() => {
+            this.simpleList[2] = 'new three';
+          })
+
+        ForEach(this.simpleList, (item: string) => {
+          ChildItem({ item: item })
+            .margin({ top: 20 })
+        }, (item: string) => item)
+      }
+      .justifyContent(FlexAlign.Center)
+      .width('100%')
+      .height('100%')
+    }
+    .height('100%')
+    .backgroundColor(0xF1F3F5)
+  }
+}
+
+@Component
+struct ChildItem {
+  @Prop item: string;
+
+  build() {
+    Text(this.item)
+      .fontSize(30)
+  }
+}
+```
+
+从本例可以看出`@State` 能够监听到简单数据类型数组数据源 `simpleList` 数组项的变化。
+
+1. 当 `simpleList` 数组项发生变化时，会触发 `ForEach` 进行重新渲染。
+2. `ForEach` 遍历新的数据源 `['one', 'two', 'new three']`，并生成对应的键值`one`、`two`和`new three`。
+3. 其中，键值`one`和`two`在上次渲染中已经存在，所以 `ForEach` 复用了对应的组件并进行了渲染。对于第三个数组项 “new three”，由于其通过键值生成规则 `item` 生成的键值`new three`在上次渲染中不存在，因此 `ForEach` 为该数组项创建了一个新的组件。
+
+
+
+### 使用场景
+
+ForEach组件在开发过程中的主要应用场景包括：[数据源不变](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#数据源不变)、[数据源数组项发生变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#数据源数组项发生变化)（如插入、删除操作）、[数据源数组项子属性变化](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#数据源数组项子属性变化)。
+
+
+
+### 不推荐案例
+
+开发者在使用ForEach的过程中，若对于键值生成规则的理解不够充分，可能会出现错误的使用方式。错误使用一方面会导致功能层面问题，例如[渲染结果非预期](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#渲染结果非预期)，另一方面会导致性能层面问题，例如[渲染性能降低](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#渲染性能降低)。
+
+#### 渲染结果非预期
+
+在本示例中，通过设置`ForEach`的第三个参数`KeyGenerator`函数，自定义键值生成规则为数据源的索引`index`的字符串类型值。当点击父组件`Parent`中“在第1项后插入新项”文本组件后，界面会出现非预期的结果。
+
+```ts
+@Entry
+@Component
+struct Parent {
+  @State simpleList: Array<string> = ['one', 'two', 'three'];
+
+  build() {
+    Column() {
+      Button() {
+        Text('在第1项后插入新项').fontSize(30)
+      }
+      .onClick(() => {
+        this.simpleList.splice(1, 0, 'new item');
+      })
+
+      ForEach(this.simpleList, (item: string) => {
+        ChildItem({ item: item })
+      }, (item: string, index: number) => index.toString())
+    }
+    .justifyContent(FlexAlign.Center)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(0xF1F3F5)
+  }
+}
+
+@Component
+struct ChildItem {
+  @Prop item: string;
+
+  build() {
+    Text(this.item)
+      .fontSize(30)
+  }
+}
+```
+
+`ForEach`在首次渲染时，创建的键值依次为"0"、“1”、“2”。
+
+插入新项后，数据源`simpleList`变为`['one', 'new item', 'two', 'three']`，框架监听到`@State`装饰的数据源长度变化触发`ForEach`重新渲染。
+
+`ForEach`依次遍历新数据源，遍历数据项"one"时生成键值"0"，存在相同键值，因此不创建新组件。继续遍历数据项"new item"时生成键值"1"，存在相同键值，因此不创建新组件。继续遍历数据项"two"生成键值"2"，存在相同键值，因此不创建新组件。最后遍历数据项"three"时生成键值"3"，不存在相同键值，创建内容为"three"的新组件并渲染。
+
+从以上可以看出，当最终键值生成规则包含`index`时，期望的界面渲染结果为`['one', 'new item', 'two', 'three']`，而实际的渲染结果为`['one', 'two', 'three', 'three']`，渲染结果不符合开发者预期。因此，开发者在使用`ForEach`时应尽量避免最终键值生成规则中包含`index`。
+
+#### 渲染性能降低
+
+在本示例中，`ForEach`的第三个参数`KeyGenerator`函数处于缺省状态。根据上述[键值生成规则](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-foreach.md/#键值生成规则)，此例使用框架默认的键值生成规则，即最终键值为字符串`index + '__' + JSON.stringify(item)`。当点击“在第1项后插入新项”文本组件后，`ForEach`将需要为第2个数组项以及其后的所有项重新创建组件。
+
+```ts
+@Entry
+@Component
+struct Parent {
+  @State simpleList: Array<string> = ['one', 'two', 'three'];
+
+  build() {
+    Column() {
+      Button() {
+        Text('在第1项后插入新项').fontSize(30)
+      }
+      .onClick(() => {
+        this.simpleList.splice(1, 0, 'new item');
+        console.log(`[onClick]: simpleList is ${JSON.stringify(this.simpleList)}`);
+      })
+
+      ForEach(this.simpleList, (item: string) => {
+        ChildItem({ item: item })
+      })
+    }
+    .justifyContent(FlexAlign.Center)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(0xF1F3F5)
+  }
+}
+
+@Component
+struct ChildItem {
+  @Prop item: string;
+
+  aboutToAppear() {
+    console.log(`[aboutToAppear]: item is ${this.item}`);
+  }
+
+  build() {
+    Text(this.item)
+      .fontSize(50)
+  }
+}
+```
+
+插入新项后，`ForEach`为`new item`、 `two`、 `three`三个数组项创建了对应的组件`ChildItem`，并执行了组件的[`aboutToAppear()`](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-custom-component-lifecycle.md#abouttoappear)生命周期函数。这是因为：
+
+1. 在`ForEach`首次渲染时，创建的键值依次为`0__one`、`1__two`、`2__three`。
+2. 插入新项后，数据源`simpleList`变为`['one', 'new item', 'two', 'three']`，ArkUI框架监听到`@State`装饰的数据源长度变化触发`ForEach`重新渲染。
+3. `ForEach`依次遍历新数据源，遍历数据项`one`时生成键值`0__one`，键值已存在，因此不创建新组件。继续遍历数据项`new item`时生成键值`1__new item`，不存在相同键值，创建内容为`new item`的新组件并渲染。继续遍历数据项`two`生成键值`2__two`，不存在相同键值，创建内容为`two`的新组件并渲染。最后遍历数据项`three`时生成键值`3__three`，不存在相同键值，创建内容为`three`的新组件并渲染。
+
+尽管此示例中界面渲染的结果符合预期，但每次插入一条新数组项时，`ForEach`都会为从该数组项起后面的所有数组项全部重新创建组件。当数据源数据量较大或组件结构复杂时，由于组件无法得到复用，将导致性能体验不佳。因此，**除非必要，否则不推荐将第三个参数`KeyGenerator`函数处于缺省状态，以及在键值生成规则中包含数据项索引`index`。**
+
+
+
+## LazyForEach：数据懒加载
+
+LazyForEach从提供的数据源中按需迭代数据，并在每次迭代过程中创建相应的组件。当在滚动容器中使用了LazyForEach，框架会根据滚动容器可视区域按需创建组件，当组件画出可视区域外时，框架会进行销毁回收以降低内存占用。
+
+### 接口描述
+
+```ts
+LazyForEach(
+    dataSource: IDataSource,             // 需要进行数据迭代的数据源
+    itemGenerator: (item: any, index?: number) => void,  // 子组件生成函数
+    keyGenerator?: (item: any, index?: number) => string // 键值生成函数
+): void
+```
+
+**参数：**
+
+| 参数名        | 参数类型                                                     | 必填 | 参数描述                                                     |
+| :------------ | :----------------------------------------------------------- | :--- | :----------------------------------------------------------- |
+| dataSource    | [IDataSource](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-lazyforeach.md#idatasource类型说明) | 是   | LazyForEach数据源，需要开发者实现相关接口。                  |
+| itemGenerator | (item: any， index?:number) => void                          | 是   | 子组件生成函数，为数组中的每一个数据项创建一个子组件。 **说明：** item是当前数据项，index是数据项索引值。 itemGenerator的函数体必须使用大括号{…}。itemGenerator每次迭代只能并且必须生成一个子组件。itemGenerator中可以使用if语句，但是必须保证if语句每个分支都会创建一个相同类型的子组件。itemGenerator中不允许使用ForEach和LazyForEach语句。 |
+| keyGenerator  | (item: any, index?:number) => string                         | 否   | 键值生成函数，用于给数据源中的每一个数据项生成唯一且固定的键值。当数据项在数组中的位置更改时，其键值不得更改，当数组中的数据项被新项替换时，被替换项的键值和新项的键值必须不同。键值生成器的功能是可选的，但是，为了使开发框架能够更好地识别数组更改，提高性能，建议提供。如将数组反向时，如果没有提供键值生成器，则LazyForEach中的所有节点都将重建。 **说明：** item是当前数据项，index是数据项索引值。 数据源中的每一个数据项生成的键值不能重复。 |
+
+
+
+### IDataSource类型说明
+
+```ts
+interface IDataSource {
+    totalCount(): number; // 获得数据总数
+    getData(index: number): Object; // 获取索引值对应的数据
+    registerDataChangeListener(listener: DataChangeListener): void; // 注册数据改变的监听器
+    unregisterDataChangeListener(listener: DataChangeListener): void; // 注销数据改变的监听器
+}
+```
+
+| 接口声明                                                     | 参数类型                                                     | 说明                                                      |
+| :----------------------------------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------- |
+| totalCount(): number                                         | -                                                            | 获得数据总数。                                            |
+| getData(index: number): any                                  | number                                                       | 获取索引值index对应的数据。 index：获取数据对应的索引值。 |
+| registerDataChangeListener(listener:[DataChangeListener](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-lazyforeach.md#datachangelistener类型说明)): void | [DataChangeListener](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-lazyforeach.md#datachangelistener类型说明) | 注册数据改变的监听器。 listener：数据变化监听器           |
+| unregisterDataChangeListener(listener:[DataChangeListener](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-lazyforeach.md#datachangelistener类型说明)): void | [DataChangeListener](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/quick-start/arkts-rendering-control-lazyforeach.md#datachangelistener类型说明) | 注销数据改变的监听器。 listener：数据变化监听器           |
+
+### DataChangeListener类型说明
+
+```ts
+interface DataChangeListener {
+    onDataReloaded(): void; // 重新加载数据完成后调用
+    onDataAdded(index: number): void; // 添加数据完成后调用
+    onDataMoved(from: number, to: number): void; // 数据移动起始位置与数据移动目标位置交换完成后调用
+    onDataDeleted(index: number): void; // 删除数据完成后调用
+    onDataChanged(index: number): void; // 改变数据完成后调用
+    onDataAdd(index: number): void; // 添加数据完成后调用
+    onDataMove(from: number, to: number): void; // 数据移动起始位置与数据移动目标位置交换完成后调用
+    onDataDelete(index: number): void; // 删除数据完成后调用
+    onDataChange(index: number): void; // 改变数据完成后调用
+}
+```
+
+| 接口声明                                                | 参数类型                 | 说明                                                         |
+| :------------------------------------------------------ | :----------------------- | :----------------------------------------------------------- |
+| onDataReloaded(): void                                  | -                        | 通知组件重新加载所有数据。 键值没有变化的数据项会使用原先的子组件，键值发生变化的会重建子组件。 |
+| onDataAdd(index: number): void8+                        | number                   | 通知组件index的位置有数据添加。 index：数据添加位置的索引值。 |
+| onDataMove(from: number, to: number): void8+            | from: number, to: number | 通知组件数据有移动。 from: 数据移动起始位置，to: 数据移动目标位置。 **说明：** 数据移动前后键值要保持不变，如果键值有变化，应使用删除数据和新增数据接口。 |
+| onDataDelete(index: number):void8+                      | number                   | 通知组件删除index位置的数据并刷新LazyForEach的展示内容。 index：数据删除位置的索引值。 **说明：** 需要保证dataSource中的对应数据已经在调用onDataDelete前删除，否则页面渲染将出现未定义的行为。 |
+| onDataChange(index: number): void8+                     | number                   | 通知组件index的位置有数据有变化。 index：数据变化位置的索引值。 |
+| onDataAdded(index: number):void(deprecated)             | number                   | 通知组件index的位置有数据添加。 从API 8开始，建议使用onDataAdd。 index：数据添加位置的索引值。 |
+| onDataMoved(from: number, to: number): void(deprecated) | from: number, to: number | 通知组件数据有移动。 从API 8开始，建议使用onDataMove。 from: 数据移动起始位置，to: 数据移动目标位置。 将from和to位置的数据进行交换。 **说明：** 数据移动前后键值要保持不变，如果键值有变化，应使用删除数据和新增数据接口。 |
+| onDataDeleted(index: number):void(deprecated)           | number                   | 通知组件删除index位置的数据并刷新LazyForEach的展示内容。 从API 8开始，建议使用onDataDelete。 index：数据删除位置的索引值。 |
+| onDataChanged(index: number): void(deprecated)          | number                   | 通知组件index的位置有数据有变化。 从API 8开始，建议使用onDataChange。 index：数据变化监听器。 |
+
+### 使用限制
+
+- LazyForEach必须在容器组件内使用，仅有[List](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-container-list.md)、[Grid](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-container-grid.md)、[Swiper](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-container-swiper.md)以及[WaterFlow](https://docs.openharmony.cn/pages/v4.0/zh-cn/application-dev/reference/arkui-ts/ts-container-waterflow.md)组件支持数据懒加载（可配置cachedCount属性，即只加载可视部分以及其前后少量数据用于缓冲），其他组件仍然是一次性加载所有的数据。
+- LazyForEach在每次迭代中，必须创建且只允许创建一个子组件。
+- 生成的子组件必须是允许包含在LazyForEach父容器组件中的子组件。
+- 允许LazyForEach包含在if/else条件渲染语句中，也允许LazyForEach中出现if/else条件渲染语句。
+- 键值生成器必须针对每个数据生成唯一的值，如果键值相同，将导致键值相同的UI组件被框架忽略，从而无法在父容器内显示。
+- LazyForEach必须使用DataChangeListener对象来进行更新，第一个参数dataSource使用状态变量时，状态变量改变不会触发LazyForEach的UI刷新。
+- 为了高性能渲染，通过DataChangeListener对象的onDataChange方法来更新UI时，需要生成不同于原来的键值来触发组件刷新。
