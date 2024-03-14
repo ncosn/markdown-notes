@@ -1281,9 +1281,9 @@ Promise 构造函数**接受一个函数作为参数，该函数是同步的并�
 
 Promise 构造函数返回一个 Promise 对象，该对象具有以下几个方法：
 
-- then：用于处理 Promise 成功状态的回调函数。
-- catch：用于处理 Promise 失败状态的回调函数。
-- finally：无论 Promise 是成功还是失败，都会执行的回调函数。
+- `then`：用于处理 Promise 成功状态的回调函数。
+- `catch`：用于处理 Promise 失败状态的回调函数。
+- `finally`：无论 Promise 是成功还是失败，都会执行的回调函数。
 
 下面是一个使用 Promise 构造函数创建 Promise 对象的例子：
 
