@@ -1369,7 +1369,7 @@ reject() 参数中一般会传递一个异常给之后的 catch 函数用于处�
 但是请注意以下两点：
 
 - resolve 和 reject 的**作用域只有起始函数**，不包括 then 以及其他序列；
-- resolve 和 reject 并不能够使起始函数停止运行，**别忘了 return**。
+- **resolve 和 reject 并不能够使起始函数停止运行**，**别忘了 return**。
 
 
 
