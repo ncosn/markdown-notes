@@ -1455,6 +1455,19 @@ Taobao
 
 ### TypeScript 接口
 
+> **TS中的接口的特殊性**：
+>
+> 除了用作类的规范之外，也常用于直接描述对象的类型，例如，现有一个变量的定义如下：
+>
+> ```ts
+> interface Person {
+>     name: string;
+>     age: number;
+>     gender: string;
+> }
+> let person: Person = {name: '张三', age: 10, gender: '男'};
+> ```
+
 接口是一系列抽象方法的声明，是一些方法特征的集合，这些方法都应该是抽象的，需要由具体的类去实现，然后第三方就可以通过这组抽象方法调用，让具体的类执行具体的方法。
 
 TypeScript 接口定义如下：
@@ -2357,6 +2370,46 @@ drawAllShapes(new triangle.Triangle());
 Cirlce is drawn (external module)
 Triangle is drawn (external module)
 ```
+
+
+
+#### 避免命名冲突
+
+若多个模块中具有相同的变量、函数等内容，将这些内容导入到同一模块下就会出现命名冲突。
+
+解决方法：
+
++ **导入重命名**
+
+  ```ts
+  import { hello as helloFromA, str as strFromA } from "./moduleA";
+  import { hello as helloFromC, str as strFromC} from "./moduleC";
+  
+  helloFromA()
+  console.log(strFromA)
+  helloFromC()
+  console.log(strFromC)
+  ```
+
++ **创建模块对象**
+
+  上述导入重命名的方式能够很好地解决命名冲突的问题，但是当冲突内容较多时，这种写法会比较冗长。除了导入重命名外，还可以将某个模块的内容统一导入到一个**模块对象**上，这样就能简洁有效解决冲突的问题了，具体语法如下
+
+  ```ts
+  import * as A from "./moduleA";
+  import * as C from "./moduleC"
+  
+  A.hello();
+  console.log(A.str);
+  C.hello();
+  console.log(C.str);
+  ```
+
+  
+
+
+
+
 
 
 
